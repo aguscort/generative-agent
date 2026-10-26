@@ -1,4 +1,4 @@
-# Gerative Agent
+# Generative Agent
 
 Agentes conversacionales con memoria, reflexión y planificación, construidos en Make.com sobre la arquitectura de *Generative Agents: Interactive Simulacra of Human Behavior* (Park et al., 2023, [arXiv 2304.03442](https://arxiv.org/abs/2304.03442)). El agente habla por Telegram, guarda lo que vive en Airtable y razona con Gemini.
 
