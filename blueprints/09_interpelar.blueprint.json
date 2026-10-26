@@ -1,0 +1,321 @@
+{
+  "name": "[Human_proxy] (9/9) | Interpelar",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": null,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 2,
+      "module": "airtable:ActionSearchRecords",
+      "version": 3,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "base": "<AIRTABLE_BASE_ID>",
+        "table": "<AIRTABLE_TABLE_ID>",
+        "fields": [
+          "Tipo"
+        ],
+        "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"{{1.chat_id}}\", {Autor}=\"agente\", FIND(\"le planteó una duda a\", {Memoria}), IS_AFTER({Creado}, DATEADD(NOW(), -30, 'minutes')))",
+        "maxRecords": "5",
+        "useColumnId": false,
+        "formulaField": "formula"
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 900,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 300,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "module": "util:FunctionAggregator2",
+      "version": 1,
+      "parameters": {
+        "fn": "sum",
+        "feeder": 2
+      },
+      "mapper": {
+        "value": "{{if(2.id; 1; 0)}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 7,
+      "module": "airtable:ActionSearchRecords",
+      "version": 3,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "base": "<AIRTABLE_BASE_ID>",
+        "table": "<AIRTABLE_TABLE_ID>",
+        "fields": [
+          "Tipo"
+        ],
+        "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"{{1.chat_id}}\", {Autor}=\"agente\", FIND(\"le planteó una duda a\", {Memoria}), DATETIME_FORMAT(SET_TIMEZONE({Creado}, 'Europe/Madrid'), 'YYYY-MM-DD')=DATETIME_FORMAT(SET_TIMEZONE(NOW(), 'Europe/Madrid'), 'YYYY-MM-DD'))",
+        "maxRecords": "5",
+        "useColumnId": false,
+        "formulaField": "formula"
+      },
+      "metadata": {
+        "designer": {
+          "x": 900,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 907,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 900,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "module": "util:FunctionAggregator2",
+      "version": 1,
+      "parameters": {
+        "fn": "sum",
+        "feeder": 7
+      },
+      "mapper": {
+        "value": "{{if(7.id; 1; 0)}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 1200,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 4,
+      "module": "gemini-ai:createACompletionGeminiPro",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "filter": {
+        "name": "Sin interpelaciones en 30 min y menos de 2 hoy",
+        "conditions": [
+          [
+            {
+              "a": "{{ifempty(3.result; 0)}}",
+              "b": "0",
+              "o": "number:equal"
+            },
+            {
+              "a": "{{ifempty(8.result; 0)}}",
+              "b": "2",
+              "o": "number:less"
+            }
+          ]
+        ]
+      },
+      "mapper": {
+        "model": "gemini-3.8-flash",
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "{{1.agente}} tiene una duda que necesita aclarar con {{ifempty(1.usuario; \"su interlocutor\")}} antes de seguir.\nQué necesita saber: {{1.motivo}}\nContexto: {{ifempty(1.contexto; \"(sin contexto adicional)\")}}\n\nEscribe el mensaje de Telegram que {{1.agente}} le enviaría por iniciativa propia: una sola pregunta concreta y breve que permita resolver la duda, en su personaje y en texto plano. Escribe únicamente el mensaje, sin comillas ni prefijos.",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "generationConfig": {
+          "imageConfig": {},
+          "thinkingConfig": {}
+        },
+        "system_instruction": {
+          "parts": [
+            {
+              "text": "{{ifempty(1.descripcion; 1.agente)}}"
+            }
+          ]
+        }
+      },
+      "metadata": {
+        "designer": {
+          "x": 1500,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 901,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 1500,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "module": "telegram:SendReplyMessage",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "text": "{{trim(4.result)}}",
+        "chatId": "{{1.chat_id}}",
+        "parseMode": "",
+        "replyMarkup": "",
+        "messageThreadId": "",
+        "replyToMessageId": "",
+        "replyMarkupAssembleType": "reply_markup_enter"
+      },
+      "metadata": {
+        "designer": {
+          "x": 1800,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 902,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 1800,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "module": "http:MakeRequest",
+      "version": 4,
+      "parameters": {
+        "tlsType": "",
+        "authenticationType": "noAuth"
+      },
+      "mapper": {
+        "url": "https://hook.eu1.make.com/<WEBHOOK_ESCRIBIR>",
+        "method": "post",
+        "timeout": "120",
+        "contentType": "json",
+        "inputMethod": "jsonString",
+        "shareCookies": false,
+        "parseResponse": true,
+        "allowRedirects": true,
+        "stopOnHttpError": true,
+        "jsonStringBodyContent": "{\"memoria\": \"{{1.agente}} le planteó una duda a {{escapeJSON(ifempty(1.usuario; \"su interlocutor\"))}}: «{{escapeJSON(trim(4.result))}}»\", \"tipo\": \"observacion\", \"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"autor\": \"agente\"}",
+        "requestCompressedContent": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 2100,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 903,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 2100,
+              "y": 150
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu1.make.com",
+    "notes": [
+      {
+        "moduleIds": [
+          1
+        ],
+        "content": "<p><strong>Webhook de (9) Interpelar</strong></p><p>Origen: (8) Estudiar (módulo 7), (11) Percibir y reaccionar (módulo 11).</p><p>Destino: este escenario.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          6
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (9) Interpelar, módulo 6.</p><p>Destino: (2) Escribir.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      }
+    ]
+  }
+}

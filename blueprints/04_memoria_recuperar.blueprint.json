@@ -1,0 +1,230 @@
+{
+  "name": "[Human_proxy] (4/9) | Memoria: Recuperar",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": null,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 2,
+      "module": "gemini-ai:generateEmbeddings",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "model": "gemini-embedding-2",
+        "content": {
+          "parts": [
+            {
+              "text": "{{1.consulta}}",
+              "type": "text"
+            }
+          ]
+        },
+        "output_dimensionality": "768"
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 3,
+      "module": "airtable:ActionSearchRecords",
+      "version": 3,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "base": "<AIRTABLE_BASE_ID>",
+        "sort": [
+          {
+            "field": "Creado",
+            "direction": "desc"
+          }
+        ],
+        "table": "<AIRTABLE_TABLE_ID>",
+        "fields": [
+          "Memoria",
+          "Tipo",
+          "Importancia",
+          "Ultimo_acceso",
+          "Embedding",
+          "Creado"
+        ],
+        "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"{{1.chat_id}}\")",
+        "maxRecords": "300",
+        "useColumnId": false,
+        "formulaField": "formula"
+      },
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 4,
+      "module": "util:TextAggregator",
+      "version": 1,
+      "parameters": {
+        "feeder": 3,
+        "rowSeparator": "\n"
+      },
+      "mapper": {
+        "value": "{\"id\": \"{{3.id}}\", \"tipo\": \"{{3.Tipo}}\", \"imp\": {{ifempty(3.Importancia; 0)}}, \"acc\": \"{{ifempty(3.Ultimo_acceso; 3.Creado)}}\", \"creado\": \"{{3.Creado}}\", \"emb\": \"{{escapeJSON(3.Embedding)}}\", \"txt\": \"{{escapeJSON(3.Memoria)}}\"}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 900,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 5,
+      "module": "code:ExecuteCode",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "input": [
+          {
+            "name": "consulta_emb",
+            "value": "[{{2.embedding.values}}]"
+          },
+          {
+            "name": "registros",
+            "value": "{{4.text}}"
+          },
+          {
+            "name": "k",
+            "value": "{{ifempty(1.k; 10)}}"
+          },
+          {
+            "name": "ahora",
+            "value": "{{now}}"
+          }
+        ],
+        "language": "javascript",
+        "inputFormat": "editor",
+        "dependencies": [],
+        "codeEditorJavascript": "// [Human_proxy] Recuperación de memorias (Park et al., 2023, §4.1)\n// score = recencia + importancia + relevancia (alfa = 1), cada componente normalizado min-max a [0,1]\n// recencia: decaimiento exponencial 0.995 por hora desde el último acceso\n// relevancia: similitud coseno entre el embedding de la consulta y el de cada memoria\nconst { consulta_emb, registros, k, ahora } = input;\n\n// Los vectores llegan como texto; se extraen los números con regex (Make no siempre los serializa como JSON válido)\nconst vec = t => (String(t || '').match(/-?\\d+(?:\\.\\d+)?(?:e[-+]?\\d+)?/gi) || []).map(Number);\nconst q = vec(consulta_emb);\nconst lineas = String(registros || '').split('\\n').map(l => l.trim()).filter(Boolean);\nconst recs = [];\nfor (const l of lineas) { try { recs.push(JSON.parse(l)); } catch (e) { /* línea corrupta: se ignora */ } }\nconst K = parseInt(k, 10) > 0 ? parseInt(k, 10) : 10;\nconst now = ahora ? new Date(ahora) : new Date();\n\nconst coseno = (a, b) => {\n if (!Array.isArray(a) || !Array.isArray(b) || !a.length || a.length !== b.length) return 0;\n let p = 0, na = 0, nb = 0;\n for (let i = 0; i < a.length; i++) { p += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }\n return na && nb ? p / (Math.sqrt(na) * Math.sqrt(nb)) : 0;\n};\n\nconst filas = recs.map(r => {\n const horas = Math.max(0, (now - new Date(r.acc)) / 3.6e6);\n return {\n id: r.id, memoria: r.txt, tipo: r.tipo, creado: r.creado,\n importancia: Number(r.imp) || 0,\n recencia: isFinite(horas) ? Math.pow(0.995, horas) : 0,\n relevancia: coseno(q, vec(r.emb)),\n };\n});\n\nconst norm = campo => {\n const v = filas.map(f => f[campo]);\n const min = Math.min(...v), max = Math.max(...v);\n filas.forEach(f => { f[campo + '_n'] = max > min ? (f[campo] - min) / (max - min) : 0; });\n};\n['recencia', 'importancia', 'relevancia'].forEach(norm);\nfilas.forEach(f => { f.score = f.recencia_n + f.importancia_n + f.relevancia_n; });\nfilas.sort((a, b) => b.score - a.score);\n\nconst top = filas.slice(0, K).map(f => ({\n id: f.id, memoria: f.memoria, tipo: f.tipo, creado: f.creado,\n score: +f.score.toFixed(4), recencia: +f.recencia_n.toFixed(4),\n importancia: +f.importancia_n.toFixed(4), relevancia: +f.relevancia_n.toFixed(4),\n}));\nconst texto = top.map((m, i) => `${i + 1}. ${m.memoria}`).join('\\n');\nconst texto_ids = top.map(m => `(${m.id}) ${m.memoria}`).join('\\n');\n\nreturn {\n ids: top.map(m => m.id),\n texto,\n texto_ids,\n total_evaluadas: filas.length,\n respuesta: JSON.stringify({ memorias: top, texto, texto_ids, total_evaluadas: filas.length }),\n};"
+      },
+      "metadata": {
+        "designer": {
+          "x": 1200,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 6,
+      "module": "gateway:WebhookRespond",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "body": "{{5.result.respuesta}}",
+        "status": "200",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "metadata": {
+        "designer": {
+          "x": 1500,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 7,
+      "module": "builtin:BasicFeeder",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "array": "{{5.result.ids}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 1800,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 8,
+      "module": "airtable:ActionUpdateRecords",
+      "version": 3,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "id": "{{7.value}}",
+        "base": "<AIRTABLE_BASE_ID>",
+        "table": "<AIRTABLE_TABLE_ID>",
+        "record": {
+          "<FLD_ULTIMO_ACCESO>": "{{now}}"
+        },
+        "typecast": false,
+        "useColumnId": false
+      },
+      "metadata": {
+        "designer": {
+          "x": 2100,
+          "y": 0
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu1.make.com",
+    "notes": [
+      {
+        "moduleIds": [
+          1
+        ],
+        "content": "<p><strong>Webhook de (4) Recuperar</strong></p><p>Origen: (3) Reflexionar (módulo 16), (6) Responder (módulo 2), (6) Responder (módulo 10), (7) Resumen del agente (módulo 10), (7) Resumen del agente (módulo 12), (7) Resumen del agente (módulo 14), (8) Estudiar (módulo 4).</p><p>Destino: este escenario.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      }
+    ]
+  }
+}

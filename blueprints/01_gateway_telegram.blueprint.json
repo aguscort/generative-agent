@@ -1,0 +1,632 @@
+{
+  "name": "[Human_proxy] (1/9) | Gateway Telegram - Ejecutivo Agresivo",
+  "flow": [
+    {
+      "id": 1,
+      "module": "telegram:WatchUpdates",
+      "version": 1,
+      "parameters": {
+        "__IMTHOOK__": null
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 1500
+        }
+      }
+    },
+    {
+      "id": 6,
+      "module": "airtable:ActionSearchRecords",
+      "version": 3,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "filter": {
+        "name": "Mensaje de texto (no comandos)",
+        "conditions": [
+          [
+            {
+              "a": "{{1.message.text}}",
+              "o": "exist"
+            },
+            {
+              "a": "{{1.message.text}}",
+              "b": "/",
+              "o": "text:notstartwith"
+            }
+          ]
+        ]
+      },
+      "mapper": {
+        "base": "<AIRTABLE_BASE_ID>",
+        "table": "<AIRTABLE_TABLE_ID>",
+        "fields": [
+          "Tipo"
+        ],
+        "formula": "AND({Agente}=\"Borja\", {Chat_ID}=\"{{1.message.chat.id}}\", {Tipo}=\"observacion\", {Autor}=\"usuario\", IS_AFTER({Creado}, DATEADD(NOW(), -10, 'minutes')))",
+        "maxRecords": "10",
+        "useColumnId": false,
+        "formulaField": "formula"
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 1500
+        }
+      },
+      "onerror": [
+        {
+          "id": 950,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 600,
+              "y": 3000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "module": "util:FunctionAggregator2",
+      "version": 1,
+      "parameters": {
+        "fn": "sum",
+        "feeder": 6
+      },
+      "mapper": {
+        "value": "{{if(6.id; 1; 0)}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 1350
+        }
+      }
+    },
+    {
+      "id": 8,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "mapper": null,
+      "metadata": {
+        "designer": {
+          "x": 900,
+          "y": 1350
+        }
+      },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 960,
+              "module": "datastore:GetRecord",
+              "version": 1,
+              "parameters": {
+                "datastore": null
+              },
+              "filter": {
+                "name": "Límite: menos de 10 mensajes en 10 min",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{ifempty(7.result; 0)}}",
+                      "b": "10",
+                      "o": "number:less"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "key": "perfil|Borja",
+                "returnWrapped": false
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1200,
+                  "y": 1200
+                }
+              },
+              "onerror": [
+                {
+                  "id": 961,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 1500,
+                      "y": 2400
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "module": "http:MakeRequest",
+              "version": 4,
+              "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+              },
+              "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_RESPONDER>",
+                "method": "post",
+                "timeout": "120",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": true,
+                "jsonStringBodyContent": "{\"agente\": \"Borja\", \"modo\": \"ON\", \"chat_id\": \"{{1.message.chat.id}}\", \"mensaje\": \"{{escapeJSON(1.message.text)}}\", \"usuario\": \"{{escapeJSON(1.message.from.first_name)}}\", \"descripcion\": \"{{escapeJSON(ifempty(960.resumen; \"Borja\"))}} Limita la respuesta a una o dos frases, sin pasar de 20 palabras.\"}",
+                "requestCompressedContent": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1500,
+                  "y": 1050
+                }
+              },
+              "onerror": [
+                {
+                  "id": 951,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 1800,
+                      "y": 2100
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 957,
+              "module": "slack:CreateMessage",
+              "version": 4,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "filter": null,
+              "mapper": {
+                "text": "{{1.message.from.first_name}} dijo \"{{1.message.text}}\" y Borja respondio: \"{{2.data.respuesta}}\"",
+                "parse": false,
+                "mrkdwn": true,
+                "channel": "<SLACK_CHANNEL_ID>",
+                "channelType": "private",
+                "channelWType": "list"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1800,
+                  "y": 900
+                }
+              },
+              "onerror": [
+                {
+                  "id": 962,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 2100,
+                      "y": 1800
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "module": "telegram:SendReplyMessage",
+              "version": 1,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "mapper": {
+                "text": "{{2.data.respuesta}}",
+                "chatId": "{{1.message.chat.id}}",
+                "parseMode": "",
+                "replyMarkup": "",
+                "messageThreadId": "",
+                "replyToMessageId": "",
+                "replyMarkupAssembleType": "reply_markup_enter"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2100,
+                  "y": 750
+                }
+              },
+              "onerror": [
+                {
+                  "id": 952,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 2400,
+                      "y": 1500
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "module": "http:MakeRequest",
+              "version": 4,
+              "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+              },
+              "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_ESCRIBIR>",
+                "method": "post",
+                "timeout": "120",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": true,
+                "jsonStringBodyContent": "{\"memoria\": \"{{escapeJSON(1.message.from.first_name)}} le dijo a Borja: «{{escapeJSON(1.message.text)}}»\", \"tipo\": \"observacion\", \"agente\": \"Borja\", \"chat_id\": \"{{1.message.chat.id}}\", \"autor\": \"usuario\"}",
+                "requestCompressedContent": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2400,
+                  "y": 600
+                }
+              },
+              "onerror": [
+                {
+                  "id": 953,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 2700,
+                      "y": 1200
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "module": "http:MakeRequest",
+              "version": 4,
+              "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+              },
+              "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_ESCRIBIR>",
+                "method": "post",
+                "timeout": "120",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": true,
+                "jsonStringBodyContent": "{\"memoria\": \"Borja le respondió a {{escapeJSON(1.message.from.first_name)}}: «{{escapeJSON(2.data.respuesta)}}»\", \"tipo\": \"observacion\", \"agente\": \"Borja\", \"chat_id\": \"{{1.message.chat.id}}\", \"autor\": \"agente\"}",
+                "requestCompressedContent": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2700,
+                  "y": 450
+                }
+              },
+              "onerror": [
+                {
+                  "id": 954,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 3000,
+                      "y": 900
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 15,
+              "module": "http:MakeRequest",
+              "version": 4,
+              "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+              },
+              "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_ESTUDIAR>",
+                "method": "post",
+                "timeout": "30",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": false,
+                "allowRedirects": true,
+                "stopOnHttpError": false,
+                "jsonStringBodyContent": "{\"agente\": \"Borja\", \"chat_id\": \"{{1.message.chat.id}}\", \"mensaje\": \"{{escapeJSON(1.message.text)}}\", \"usuario\": \"{{escapeJSON(1.message.from.first_name)}}\", \"descripcion\": \"{{escapeJSON(ifempty(960.resumen; \"Borja\"))}}\"}",
+                "requestCompressedContent": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 3000,
+                  "y": 300
+                }
+              },
+              "onerror": [
+                {
+                  "id": 16,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 3300,
+                      "y": 600
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 11,
+              "module": "airtable:ActionSearchRecords",
+              "version": 3,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "mapper": {
+                "base": "<AIRTABLE_BASE_ID>",
+                "table": "<AIRTABLE_TABLE_ID>",
+                "fields": [
+                  "Tipo"
+                ],
+                "formula": "AND({Agente}=\"Borja\", {Chat_ID}=\"GLOBAL\", {Tipo}=\"plan\", DATETIME_FORMAT(SET_TIMEZONE({Plan_inicio}, 'Europe/Madrid'), 'YYYY-MM-DD')=\"{{formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\")}}\")",
+                "maxRecords": "1",
+                "useColumnId": false,
+                "formulaField": "formula"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 3300,
+                  "y": 150
+                }
+              },
+              "onerror": [
+                {
+                  "id": 955,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 3600,
+                      "y": 300
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 12,
+              "module": "util:FunctionAggregator2",
+              "version": 1,
+              "parameters": {
+                "fn": "sum",
+                "feeder": 11
+              },
+              "mapper": {
+                "value": "{{if(11.id; 1; 0)}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 3600,
+                  "y": 0
+                }
+              }
+            },
+            {
+              "id": 13,
+              "module": "http:MakeRequest",
+              "version": 4,
+              "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+              },
+              "filter": {
+                "name": "Borja aún no tiene plan para hoy",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{ifempty(12.result; 0)}}",
+                      "b": "0",
+                      "o": "number:equal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_PLANIFICAR>",
+                "method": "post",
+                "timeout": "30",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": false,
+                "allowRedirects": true,
+                "stopOnHttpError": false,
+                "jsonStringBodyContent": "{\"agente\": \"Borja\", \"descripcion\": \"{{escapeJSON(ifempty(960.resumen; \"Borja\"))}}\"}",
+                "requestCompressedContent": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 3900,
+                  "y": 0
+                }
+              },
+              "onerror": [
+                {
+                  "id": 14,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 4200,
+                      "y": 0
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 10,
+              "module": "telegram:SendReplyMessage",
+              "version": 1,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "filter": {
+                "name": "Límite: mas de 10 mensajes en 10 min",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{ifempty(7.result; 0)}}",
+                      "b": "10",
+                      "o": "number:greaterorequal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "text": "Descansamos un poco. Intentalo en un par de minutos ",
+                "chatId": "{{1.message.chat.id}}",
+                "parseMode": "",
+                "replyMarkup": "",
+                "messageThreadId": "",
+                "replyToMessageId": "",
+                "replyMarkupAssembleType": "reply_markup_enter"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1200,
+                  "y": 2700
+                }
+              },
+              "onerror": [
+                {
+                  "id": 956,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 1500,
+                      "y": 2700
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": true,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu1.make.com",
+    "notes": [
+      {
+        "moduleIds": [
+          1
+        ],
+        "content": "<p><strong>Webhook de Telegram (bot del agente)</strong></p><p>Origen: mensajes de los usuarios en Telegram.</p><p>Destino: este escenario, (1) Gateway.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          2
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (1) Gateway, módulo 2.</p><p>Destino: (6) Responder.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          4
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (1) Gateway, módulo 4.</p><p>Destino: (2) Escribir.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          5
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (1) Gateway, módulo 5.</p><p>Destino: (2) Escribir.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          15
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (1) Gateway, módulo 15.</p><p>Destino: (8) Estudiar.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          13
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (1) Gateway, módulo 13.</p><p>Destino: (5) Planificar.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      }
+    ]
+  }
+}

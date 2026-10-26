@@ -1,0 +1,438 @@
+{
+  "name": "[Human_proxy] (6/9) | Responder",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": null,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 9,
+      "module": "http:MakeRequest",
+      "version": 4,
+      "parameters": {
+        "tlsType": "",
+        "authenticationType": "noAuth"
+      },
+      "mapper": {
+        "url": "https://hook.eu1.make.com/<WEBHOOK_RESUMEN>",
+        "method": "post",
+        "timeout": "30",
+        "contentType": "json",
+        "inputMethod": "jsonString",
+        "shareCookies": false,
+        "parseResponse": true,
+        "allowRedirects": true,
+        "stopOnHttpError": false,
+        "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"modo\": \"{{ifempty(1.modo; \"OFF\")}}\"}",
+        "requestCompressedContent": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 2,
+      "module": "http:MakeRequest",
+      "version": 4,
+      "parameters": {
+        "tlsType": "",
+        "authenticationType": "noAuth"
+      },
+      "mapper": {
+        "url": "https://hook.eu1.make.com/<WEBHOOK_RECUPERAR>",
+        "method": "post",
+        "timeout": "60",
+        "contentType": "json",
+        "inputMethod": "jsonString",
+        "shareCookies": false,
+        "parseResponse": true,
+        "allowRedirects": true,
+        "stopOnHttpError": true,
+        "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"consulta\": \"{{escapeJSON(1.mensaje)}}\", \"k\": 10}",
+        "requestCompressedContent": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 12,
+      "module": "datastore:GetRecord",
+      "version": 1,
+      "parameters": {
+        "datastore": null
+      },
+      "mapper": {
+        "key": "rel|{{1.agente}}|{{1.chat_id}}",
+        "returnWrapped": false
+      },
+      "metadata": {
+        "designer": {
+          "x": 900,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 3,
+      "module": "airtable:ActionSearchRecords",
+      "version": 3,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "base": "<AIRTABLE_BASE_ID>",
+        "sort": [
+          {
+            "field": "Creado",
+            "direction": "desc"
+          }
+        ],
+        "table": "<AIRTABLE_TABLE_ID>",
+        "fields": [
+          "Memoria",
+          "Autor"
+        ],
+        "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"{{1.chat_id}}\", {Tipo}=\"observacion\")",
+        "maxRecords": "12",
+        "useColumnId": false,
+        "formulaField": "formula"
+      },
+      "metadata": {
+        "designer": {
+          "x": 1200,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 4,
+      "module": "util:TextAggregator",
+      "version": 1,
+      "parameters": {
+        "feeder": 3,
+        "rowSeparator": "\n"
+      },
+      "mapper": {
+        "value": "- [{{3.Autor}}] {{3.Memoria}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 1500,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 7,
+      "module": "airtable:ActionSearchRecords",
+      "version": 3,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "base": "<AIRTABLE_BASE_ID>",
+        "sort": [
+          {
+            "field": "Plan_inicio",
+            "direction": "desc"
+          }
+        ],
+        "table": "<AIRTABLE_TABLE_ID>",
+        "fields": [
+          "Memoria"
+        ],
+        "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"GLOBAL\", {Tipo}=\"plan\", IS_BEFORE({Plan_inicio}, DATEADD(NOW(), 1, 'minutes')), IS_AFTER(DATEADD({Plan_inicio}, {Plan_duracion_min}, 'minutes'), NOW()))",
+        "maxRecords": "1",
+        "useColumnId": false,
+        "formulaField": "formula"
+      },
+      "metadata": {
+        "designer": {
+          "x": 1800,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 8,
+      "module": "util:TextAggregator",
+      "version": 1,
+      "parameters": {
+        "feeder": 7,
+        "rowSeparator": "\n"
+      },
+      "mapper": {
+        "value": "{{7.Memoria}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 2100,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 5,
+      "module": "gemini-ai:createACompletionGeminiPro",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "model": "gemini-3.8-flash",
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Son las {{formatDate(now; \"HH:mm [del] DD/MM/YYYY\"; \"Europe/Madrid\")}}.\n\nLo que {{1.agente}} tiene planificado para este momento: {{ifempty(8.text; \"nada en concreto\")}}\n\nLo que {{1.agente}} sabe de {{ifempty(1.usuario; \"su interlocutor\")}} y de su relación: {{ifempty(12.resumen; \"todavía no hay un resumen; guíate por el historial\")}}\n\nResumen del contexto relevante de la memoria de {{1.agente}} (ordenado por relevancia):\n{{2.data.texto}}\n\nHistorial reciente de la conversación (del más reciente al más antiguo):\n{{4.text}}\n\n{{ifempty(1.usuario; \"El interlocutor\")}} le dice a {{1.agente}}: {{1.mensaje}}\n\n¿Cómo respondería {{1.agente}}? Escribe únicamente su respuesta, sin comillas ni prefijos.",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "generationConfig": {
+          "imageConfig": {},
+          "thinkingConfig": {}
+        },
+        "system_instruction": {
+          "parts": [
+            {
+              "text": "{{1.descripcion}}\n\nLo que {{1.agente}} ha llegado a saber de sí mismo por lo vivido en esta conversación (si está vacío, ignóralo):\n{{9.data.resumen}}\n\nEres {{1.agente}} y estás hablando por Telegram. Mantente siempre en tu personaje. Responde en el idioma del interlocutor, con la extensión propia de un chat, y no inventes recuerdos que no aparezcan en tu memoria."
+            }
+          ]
+        }
+      },
+      "metadata": {
+        "designer": {
+          "x": 2400,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 6,
+      "module": "gateway:WebhookRespond",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "body": "{\"respuesta\": \"{{escapeJSON(trim(5.result))}}\"}",
+        "status": "200",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "metadata": {
+        "designer": {
+          "x": 2700,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 10,
+      "module": "http:MakeRequest",
+      "version": 4,
+      "parameters": {
+        "tlsType": "",
+        "authenticationType": "noAuth"
+      },
+      "filter": {
+        "name": "Sin caché de relación o caducada (24 h)",
+        "conditions": [
+          [
+            {
+              "a": "{{12.resumen}}",
+              "o": "notexist"
+            }
+          ],
+          [
+            {
+              "a": "{{12.actualizado}}",
+              "b": "{{addHours(now; -24)}}",
+              "o": "date:lessorequal"
+            }
+          ]
+        ]
+      },
+      "mapper": {
+        "url": "https://hook.eu1.make.com/<WEBHOOK_RECUPERAR>",
+        "method": "post",
+        "timeout": "60",
+        "contentType": "json",
+        "inputMethod": "jsonString",
+        "shareCookies": false,
+        "parseResponse": true,
+        "allowRedirects": true,
+        "stopOnHttpError": true,
+        "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"consulta\": \"¿Qué relación tiene {{1.agente}} con {{escapeJSON(ifempty(1.usuario; \"su interlocutor\"))}} y qué sabe de esa persona?\", \"k\": 10}",
+        "requestCompressedContent": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 3000,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 11,
+      "module": "gemini-ai:createACompletionGeminiPro",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "model": "gemini-3.8-flash",
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Afirmaciones que recuerda {{1.agente}} de su conversación con {{ifempty(1.usuario; \"su interlocutor\")}}:\n{{ifempty(10.data.texto; \"(ninguna)\")}}\n\n¿Qué relación tiene {{1.agente}} con {{ifempty(1.usuario; \"su interlocutor\")}} y qué sabe de esa persona? Responde en una o dos frases, en tercera persona y en texto plano, usando solo lo que se deduzca de las afirmaciones. Si no hay nada concreto, responde únicamente: {{1.agente}} todavía no sabe nada concreto de {{ifempty(1.usuario; \"su interlocutor\")}}.",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "generationConfig": {
+          "imageConfig": {},
+          "thinkingConfig": {}
+        },
+        "system_instruction": {
+          "parts": [
+            {
+              "text": "Resumes recuerdos con precisión y sin inventar nada."
+            }
+          ]
+        }
+      },
+      "metadata": {
+        "designer": {
+          "x": 3300,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 13,
+      "module": "datastore:AddRecord",
+      "version": 1,
+      "parameters": {
+        "datastore": null
+      },
+      "filter": {
+        "name": "Hay algo que cachear",
+        "conditions": [
+          [
+            {
+              "a": "{{11.result}}",
+              "b": "todavía no sabe nada concreto",
+              "o": "text:notcontain"
+            }
+          ]
+        ]
+      },
+      "mapper": {
+        "key": "rel|{{1.agente}}|{{1.chat_id}}",
+        "data": {
+          "agente": "{{1.agente}}",
+          "chat_id": "{{1.chat_id}}",
+          "resumen": "{{trim(11.result)}}",
+          "actualizado": "{{now}}"
+        },
+        "overwrite": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 3600,
+          "y": 0
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu1.make.com",
+    "notes": [
+      {
+        "moduleIds": [
+          1
+        ],
+        "content": "<p><strong>Webhook de (6) Responder</strong></p><p>Origen: (1) Gateway (módulo 2).</p><p>Destino: este escenario.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          9
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (6) Responder, módulo 9.</p><p>Destino: (7) Resumen del agente.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          2
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (6) Responder, módulo 2.</p><p>Destino: (4) Recuperar.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          10
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (6) Responder, módulo 10.</p><p>Destino: (4) Recuperar.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      }
+    ]
+  }
+}

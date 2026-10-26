@@ -1,0 +1,117 @@
+{
+  "name": "[Human_proxy] (10/11) | Despertador 05:00",
+  "flow": [
+    {
+      "id": 1,
+      "module": "datastore:GetRecord",
+      "version": 1,
+      "parameters": {
+        "datastore": null
+      },
+      "mapper": {
+        "key": "perfil|Borja",
+        "returnWrapped": false
+      },
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 2,
+      "module": "http:MakeRequest",
+      "version": 4,
+      "parameters": {
+        "tlsType": "",
+        "authenticationType": "noAuth"
+      },
+      "filter": {
+        "name": "Perfil encontrado",
+        "conditions": [
+          [
+            {
+              "a": "{{1.resumen}}",
+              "o": "exist"
+            }
+          ]
+        ]
+      },
+      "mapper": {
+        "url": "https://hook.eu1.make.com/<WEBHOOK_PLANIFICAR>",
+        "method": "post",
+        "timeout": "60",
+        "contentType": "json",
+        "inputMethod": "jsonString",
+        "shareCookies": false,
+        "parseResponse": false,
+        "allowRedirects": true,
+        "stopOnHttpError": true,
+        "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"descripcion\": \"{{escapeJSON(1.resumen)}}\"}",
+        "requestCompressedContent": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 3,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 300,
+              "y": 150
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": false,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu1.make.com",
+    "notes": [
+      {
+        "moduleIds": [
+          2
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (10) Despertador, módulo 2.</p><p>Destino: (5) Planificar.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          1
+        ],
+        "content": "<p><strong>Disparo programado</strong></p><p>Origen: la programación de Make.</p><p>Destino: este escenario, (10) Despertador.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,1159 @@
+{
+  "name": "[Human_proxy] (5/9) | Planificar",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": null,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 150
+        }
+      }
+    },
+    {
+      "id": 16,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "filter": null,
+      "mapper": null,
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 150
+        }
+      },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 3,
+              "module": "util:SetVariables",
+              "version": 1,
+              "parameters": {},
+              "filter": {
+                "name": "Es cualquier otro",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{1.agente}}",
+                      "b": "Borja",
+                      "o": "text:notequal:ci"
+                    },
+                    {
+                      "a": "{{1.agente}}",
+                      "o": "exist"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                  {
+                    "name": "fecha",
+                    "value": "{{ifempty(1.fecha; formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\"))}}"
+                  },
+                  {
+                    "name": "ayer",
+                    "value": "{{formatDate(addDays(parseDate(ifempty(1.fecha; formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\")); \"YYYY-MM-DD\"; \"Europe/Madrid\"); -1); \"YYYY-MM-DD\"; \"Europe/Madrid\")}}"
+                  },
+                  {
+                    "name": "dia_semana",
+                    "value": "{{switch(formatDate(parseDate(ifempty(1.fecha; formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\")); \"YYYY-MM-DD\"; \"Europe/Madrid\"); \"d\"; \"Europe/Madrid\"); \"0\"; \"domingo\"; \"1\"; \"lunes\"; \"2\"; \"martes\"; \"3\"; \"miércoles\"; \"4\"; \"jueves\"; \"5\"; \"viernes\"; \"6\"; \"sábado\")}}"
+                  },
+                  {
+                    "name": "fecha_larga",
+                    "value": "{{formatDate(parseDate(ifempty(1.fecha; formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\")); \"YYYY-MM-DD\"; \"Europe/Madrid\"); \"DD/MM/YYYY\"; \"Europe/Madrid\")}}"
+                  }
+                ]
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 0
+                }
+              }
+            },
+            {
+              "id": 4,
+              "module": "airtable:ActionSearchRecords",
+              "version": 3,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "mapper": {
+                "base": "<AIRTABLE_BASE_ID>",
+                "table": "<AIRTABLE_TABLE_ID>",
+                "fields": [
+                  "Tipo"
+                ],
+                "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"GLOBAL\", {Tipo}=\"plan\", DATETIME_FORMAT(SET_TIMEZONE({Plan_inicio}, 'Europe/Madrid'), 'YYYY-MM-DD')=\"{{3.fecha}}\")",
+                "maxRecords": "1",
+                "useColumnId": false,
+                "formulaField": "formula"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 900,
+                  "y": 0
+                }
+              },
+              "onerror": [
+                {
+                  "id": 900,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 900,
+                      "y": 150
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "module": "util:FunctionAggregator2",
+              "version": 1,
+              "parameters": {
+                "fn": "sum",
+                "feeder": 4
+              },
+              "mapper": {
+                "value": "{{if(4.id; 1; 0)}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1200,
+                  "y": 0
+                }
+              }
+            },
+            {
+              "id": 6,
+              "module": "airtable:ActionSearchRecords",
+              "version": 3,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "mapper": {
+                "base": "<AIRTABLE_BASE_ID>",
+                "sort": [
+                  {
+                    "field": "Plan_inicio",
+                    "direction": "asc"
+                  }
+                ],
+                "table": "<AIRTABLE_TABLE_ID>",
+                "fields": [
+                  "Memoria"
+                ],
+                "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"GLOBAL\", {Tipo}=\"plan\", DATETIME_FORMAT(SET_TIMEZONE({Plan_inicio}, 'Europe/Madrid'), 'YYYY-MM-DD')=\"{{3.ayer}}\")",
+                "maxRecords": "50",
+                "useColumnId": false,
+                "formulaField": "formula"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1500,
+                  "y": 0
+                }
+              },
+              "onerror": [
+                {
+                  "id": 901,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 1500,
+                      "y": 150
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 7,
+              "module": "util:TextAggregator",
+              "version": 1,
+              "parameters": {
+                "feeder": 6,
+                "rowSeparator": "\n"
+              },
+              "mapper": {
+                "value": "{{6.Memoria}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1800,
+                  "y": 0
+                }
+              }
+            },
+            {
+              "id": 8,
+              "module": "gemini-ai:createACompletionGeminiPro",
+              "version": 1,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "filter": {
+                "name": "Aún no hay plan para hoy",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{ifempty(5.result; 0)}}",
+                      "b": "0",
+                      "o": "number:equal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "model": "gemini-3.8-flash",
+                "contents": [
+                  {
+                    "role": "user",
+                    "parts": [
+                      {
+                        "text": "Esto es lo que tenía planificado {{1.agente}} para ayer:\n{{ifempty(7.text; \"(no hay registro del día anterior)\")}}\n\nHoy es {{3.dia_semana}}, {{3.fecha_larga}}. Este es el plan de {{1.agente}} para hoy, a grandes rasgos, en 5 a 8 puntos con su hora aproximada, coherente con su personaje, su ciudad, su época y el día de la semana.\nResponde solo con la lista numerada, un punto por línea.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ],
+                "generationConfig": {
+                  "imageConfig": {},
+                  "thinkingConfig": {}
+                },
+                "system_instruction": {
+                  "parts": [
+                    {
+                      "text": "{{ifempty(1.descripcion; 1.agente)}}"
+                    }
+                  ]
+                }
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2100,
+                  "y": 0
+                }
+              },
+              "onerror": [
+                {
+                  "id": 902,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 2100,
+                      "y": 150
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 9,
+              "module": "gemini-ai:createACompletionGeminiPro",
+              "version": 1,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "mapper": {
+                "model": "gemini-3.8-flash",
+                "contents": [
+                  {
+                    "role": "user",
+                    "parts": [
+                      {
+                        "text": "Plan de {{1.agente}} para hoy ({{3.dia_semana}}, {{3.fecha_larga}}), a grandes rasgos:\n{{8.result}}\n\nDescompón este plan en bloques consecutivos de una hora como máximo, desde que {{1.agente}} se levanta hasta que se acuesta. Para cada bloque indica la hora de inicio (HH:mm, formato 24 h), la duración en minutos, la actividad concreta en una frase en tercera persona y el lugar donde ocurre.\nDevuelve exclusivamente un JSON con esta forma: {\"bloques\": [{\"inicio\": \"07:00\", \"duracion_min\": 60, \"actividad\": \"...\", \"ubicacion\": \"...\"}]}",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ],
+                "generationConfig": {
+                  "imageConfig": {},
+                  "responseSchema": "{\"type\": \"object\", \"properties\": {\"bloques\": {\"type\": \"array\", \"items\": {\"type\": \"object\", \"properties\": {\"inicio\": {\"type\": \"string\"}, \"duracion_min\": {\"type\": \"integer\"}, \"actividad\": {\"type\": \"string\"}, \"ubicacion\": {\"type\": \"string\"}}, \"required\": [\"inicio\", \"duracion_min\", \"actividad\", \"ubicacion\"]}}}, \"required\": [\"bloques\"]}",
+                  "thinkingConfig": {},
+                  "responseMimeType": "application/json"
+                },
+                "system_instruction": {
+                  "parts": [
+                    {
+                      "text": "{{ifempty(1.descripcion; 1.agente)}}"
+                    }
+                  ]
+                }
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2400,
+                  "y": 0
+                }
+              },
+              "onerror": [
+                {
+                  "id": 903,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 2400,
+                      "y": 150
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 10,
+              "module": "json:ParseJSON",
+              "version": 1,
+              "parameters": {
+                "type": ""
+              },
+              "mapper": {
+                "json": "{{9.result}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2700,
+                  "y": 0
+                }
+              },
+              "onerror": [
+                {
+                  "id": 904,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 2700,
+                      "y": 150
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 11,
+              "module": "builtin:BasicFeeder",
+              "version": 1,
+              "parameters": {},
+              "mapper": {
+                "array": "{{10.bloques}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 3000,
+                  "y": 0
+                }
+              }
+            },
+            {
+              "id": 12,
+              "module": "util:SetVariables",
+              "version": 1,
+              "parameters": {},
+              "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                  {
+                    "name": "inicio_local",
+                    "value": "{{3.fecha}} {{11.inicio}}"
+                  }
+                ]
+              },
+              "metadata": {
+                "designer": {
+                  "x": 3300,
+                  "y": 0
+                }
+              }
+            },
+            {
+              "id": 13,
+              "module": "http:MakeRequest",
+              "version": 4,
+              "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+              },
+              "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_ESCRIBIR>",
+                "method": "post",
+                "timeout": "120",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": true,
+                "jsonStringBodyContent": "{\"memoria\": \"Plan de {{1.agente}} para el {{3.dia_semana}} {{3.fecha_larga}}, de {{11.inicio}} a {{formatDate(addMinutes(parseDate(12.inicio_local; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); 11.duracion_min); \"HH:mm\"; \"Europe/Madrid\")}}: {{escapeJSON(11.actividad)}} ({{escapeJSON(11.ubicacion)}})\", \"tipo\": \"plan\", \"agente\": \"{{1.agente}}\", \"chat_id\": \"GLOBAL\", \"autor\": \"sistema\", \"plan_ubicacion\": \"{{escapeJSON(11.ubicacion)}}\", \"plan_inicio\": \"{{formatDate(parseDate(12.inicio_local; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"YYYY-MM-DDTHH:mm:ssZ\"; \"Europe/Madrid\")}}\", \"plan_duracion_min\": {{11.duracion_min}}}",
+                "requestCompressedContent": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 3600,
+                  "y": 0
+                }
+              },
+              "onerror": [
+                {
+                  "id": 905,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 3600,
+                      "y": 150
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 17,
+              "module": "util:SetVariables",
+              "version": 1,
+              "parameters": {},
+              "filter": {
+                "name": "Es Borja, nuestro Financial Adviser",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{1.agente}}",
+                      "b": "Borja",
+                      "o": "text:equal:ci"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                  {
+                    "name": "fecha",
+                    "value": "{{ifempty(1.fecha; formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\"))}}"
+                  },
+                  {
+                    "name": "ayer",
+                    "value": "{{formatDate(addDays(parseDate(ifempty(1.fecha; formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\")); \"YYYY-MM-DD\"; \"Europe/Madrid\"); -1); \"YYYY-MM-DD\"; \"Europe/Madrid\")}}"
+                  },
+                  {
+                    "name": "dia_semana",
+                    "value": "{{switch(formatDate(parseDate(ifempty(1.fecha; formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\")); \"YYYY-MM-DD\"; \"Europe/Madrid\"); \"d\"; \"Europe/Madrid\"); \"0\"; \"domingo\"; \"1\"; \"lunes\"; \"2\"; \"martes\"; \"3\"; \"miércoles\"; \"4\"; \"jueves\"; \"5\"; \"viernes\"; \"6\"; \"sábado\")}}"
+                  },
+                  {
+                    "name": "fecha_larga",
+                    "value": "{{formatDate(parseDate(ifempty(1.fecha; formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\")); \"YYYY-MM-DD\"; \"Europe/Madrid\"); \"DD/MM/YYYY\"; \"Europe/Madrid\")}}"
+                  }
+                ]
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 300
+                }
+              }
+            },
+            {
+              "id": 18,
+              "module": "airtable:ActionSearchRecords",
+              "version": 3,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "mapper": {
+                "base": "<AIRTABLE_BASE_ID>",
+                "table": "<AIRTABLE_TABLE_ID>",
+                "fields": [
+                  "Tipo"
+                ],
+                "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"GLOBAL\", {Tipo}=\"plan\", DATETIME_FORMAT(SET_TIMEZONE({Plan_inicio}, 'Europe/Madrid'), 'YYYY-MM-DD')=\"{{17.fecha}}\")",
+                "maxRecords": "1",
+                "useColumnId": false,
+                "formulaField": "formula"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 900,
+                  "y": 300
+                }
+              },
+              "onerror": [
+                {
+                  "id": 906,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 900,
+                      "y": 450
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 19,
+              "module": "util:FunctionAggregator2",
+              "version": 1,
+              "parameters": {
+                "fn": "sum",
+                "feeder": 18
+              },
+              "mapper": {
+                "value": "{{if(18.id; 1; 0)}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1200,
+                  "y": 300
+                }
+              }
+            },
+            {
+              "id": 20,
+              "module": "airtable:ActionSearchRecords",
+              "version": 3,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "mapper": {
+                "base": "<AIRTABLE_BASE_ID>",
+                "sort": [
+                  {
+                    "field": "Plan_inicio",
+                    "direction": "asc"
+                  }
+                ],
+                "table": "<AIRTABLE_TABLE_ID>",
+                "fields": [
+                  "Memoria"
+                ],
+                "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"GLOBAL\", {Tipo}=\"plan\", DATETIME_FORMAT(SET_TIMEZONE({Plan_inicio}, 'Europe/Madrid'), 'YYYY-MM-DD')=\"{{17.ayer}}\")",
+                "maxRecords": "50",
+                "useColumnId": false,
+                "formulaField": "formula"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1500,
+                  "y": 300
+                }
+              },
+              "onerror": [
+                {
+                  "id": 907,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 1500,
+                      "y": 450
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 21,
+              "module": "util:TextAggregator",
+              "version": 1,
+              "parameters": {
+                "feeder": 20,
+                "rowSeparator": "\n"
+              },
+              "mapper": {
+                "value": "{{20.Memoria}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1800,
+                  "y": 300
+                }
+              }
+            },
+            {
+              "id": 22,
+              "module": "gemini-ai:createACompletionGeminiPro",
+              "version": 1,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "filter": {
+                "name": "Aún no hay plan para hoy",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{ifempty(19.result; 0)}}",
+                      "b": "0",
+                      "o": "number:equal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "model": "gemini-3.8-flash",
+                "contents": [
+                  {
+                    "role": "user",
+                    "parts": [
+                      {
+                        "text": "Esto es lo que tenía planificado {{1.agente}} para ayer:\n{{ifempty(21.text; \"(no hay registro del día anterior)\")}}\n\nHoy es {{17.dia_semana}}, {{17.fecha_larga}}. Este es el plan de tareas de {{1.agente}} para hoy, a grandes rasgos, en 3 a 5 puntos con su hora aproximada, coherente con su personaje, su trabajo, su ciudad y el día de la semana. No incluyas la agenda de eventos financieros del día: se registra aparte.\nResponde solo con la lista numerada, un punto por línea.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ],
+                "generationConfig": {
+                  "imageConfig": {},
+                  "thinkingConfig": {}
+                },
+                "system_instruction": {
+                  "parts": [
+                    {
+                      "text": "{{ifempty(1.descripcion; 1.agente)}}"
+                    }
+                  ]
+                },
+                "google_search_context": false
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2100,
+                  "y": 300
+                }
+              },
+              "onerror": [
+                {
+                  "id": 908,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 2100,
+                      "y": 450
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 23,
+              "module": "gemini-ai:createACompletionGeminiPro",
+              "version": 1,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "mapper": {
+                "model": "gemini-3.8-flash",
+                "contents": [
+                  {
+                    "role": "user",
+                    "parts": [
+                      {
+                        "text": "Plan de {{1.agente}} para hoy ({{17.dia_semana}}, {{17.fecha_larga}}), a grandes rasgos:\n{{22.result}}\n\nDescompón este plan en bloques consecutivos de una hora como máximo, desde que {{1.agente}} se levanta hasta que se acuesta. Para cada bloque indica la hora de inicio (HH:mm, formato 24 h), la duración en minutos, la actividad concreta, especifica, mensurable y comunicble que deberia realizar el agente para la correcta valoración y aprovechamiento en cuanto a movimientos financieros del evento asociado mediante una frase en tercera persona. Dicha tarea consistirá en la busqueda concreta y especifica de información para valorar dicho momento con el fin de expresar una valoración de inversión o postura ante el mercado.\nDevuelve exclusivamente un JSON con esta forma: {\"bloques\": [{\"inicio\": \"07:00\", \"duracion_min\": 60, \"actividad\": \"...\", \"ubicacion\": \"...\"}]}",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ],
+                "generationConfig": {
+                  "imageConfig": {},
+                  "responseSchema": "{\"type\": \"object\", \"properties\": {\"bloques\": {\"type\": \"array\", \"items\": {\"type\": \"object\", \"properties\": {\"inicio\": {\"type\": \"string\"}, \"duracion_min\": {\"type\": \"integer\"}, \"actividad\": {\"type\": \"string\"}, \"ubicacion\": {\"type\": \"string\"}}, \"required\": [\"inicio\", \"duracion_min\", \"actividad\", \"ubicacion\"]}}}, \"required\": [\"bloques\"]}",
+                  "thinkingConfig": {},
+                  "responseMimeType": "application/json"
+                },
+                "system_instruction": {
+                  "parts": [
+                    {
+                      "text": "{{ifempty(1.descripcion; 1.agente)}}"
+                    }
+                  ]
+                },
+                "google_search_context": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2400,
+                  "y": 300
+                }
+              },
+              "onerror": [
+                {
+                  "id": 909,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 2400,
+                      "y": 450
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 24,
+              "module": "json:ParseJSON",
+              "version": 1,
+              "parameters": {
+                "type": ""
+              },
+              "mapper": {
+                "json": "{{23.result}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2700,
+                  "y": 300
+                }
+              },
+              "onerror": [
+                {
+                  "id": 910,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 2700,
+                      "y": 450
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 25,
+              "module": "builtin:BasicFeeder",
+              "version": 1,
+              "parameters": {},
+              "mapper": {
+                "array": "{{24.bloques}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 3000,
+                  "y": 300
+                }
+              }
+            },
+            {
+              "id": 26,
+              "module": "util:SetVariables",
+              "version": 1,
+              "parameters": {},
+              "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                  {
+                    "name": "inicio_local",
+                    "value": "{{17.fecha}} {{25.inicio}}"
+                  }
+                ]
+              },
+              "metadata": {
+                "designer": {
+                  "x": 3300,
+                  "y": 300
+                }
+              }
+            },
+            {
+              "id": 27,
+              "module": "http:MakeRequest",
+              "version": 4,
+              "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+              },
+              "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_ESCRIBIR>",
+                "method": "post",
+                "timeout": "120",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": true,
+                "jsonStringBodyContent": "{\"memoria\": \"Plan de {{1.agente}} para el {{17.dia_semana}} {{17.fecha_larga}}, de {{25.inicio}} a {{formatDate(addMinutes(parseDate(26.inicio_local; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); 25.duracion_min); \"HH:mm\"; \"Europe/Madrid\")}}: {{escapeJSON(25.actividad)}} ({{escapeJSON(25.ubicacion)}})\", \"tipo\": \"plan\", \"agente\": \"{{1.agente}}\", \"chat_id\": \"GLOBAL\", \"autor\": \"sistema\", \"plan_ubicacion\": \"{{escapeJSON(25.ubicacion)}}\", \"plan_inicio\": \"{{formatDate(parseDate(26.inicio_local; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"YYYY-MM-DDTHH:mm:ssZ\"; \"Europe/Madrid\")}}\", \"plan_duracion_min\": {{25.duracion_min}}}",
+                "requestCompressedContent": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 3600,
+                  "y": 300
+                }
+              },
+              "onerror": [
+                {
+                  "id": 911,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 3600,
+                      "y": 450
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 100,
+              "module": "util:SetVariables",
+              "version": 1,
+              "parameters": {},
+              "filter": {
+                "name": "Es Borja · capa de eventos",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{1.agente}}",
+                      "b": "Borja",
+                      "o": "text:equal:ci"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                  {
+                    "name": "ev_fecha",
+                    "value": "{{ifempty(1.fecha; formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\"))}}"
+                  },
+                  {
+                    "name": "ev_fecha_larga",
+                    "value": "{{formatDate(parseDate(ifempty(1.fecha; formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\")); \"YYYY-MM-DD\"; \"Europe/Madrid\"); \"DD/MM/YYYY\"; \"Europe/Madrid\")}}"
+                  },
+                  {
+                    "name": "ev_dia",
+                    "value": "{{switch(formatDate(parseDate(ifempty(1.fecha; formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\")); \"YYYY-MM-DD\"; \"Europe/Madrid\"); \"d\"; \"Europe/Madrid\"); \"0\"; \"domingo\"; \"1\"; \"lunes\"; \"2\"; \"martes\"; \"3\"; \"miércoles\"; \"4\"; \"jueves\"; \"5\"; \"viernes\"; \"6\"; \"sábado\")}}"
+                  }
+                ]
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 600
+                }
+              }
+            },
+            {
+              "id": 101,
+              "module": "airtable:ActionSearchRecords",
+              "version": 3,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "mapper": {
+                "base": "<AIRTABLE_BASE_ID>",
+                "table": "<AIRTABLE_TABLE_ID>",
+                "fields": [
+                  "Tipo"
+                ],
+                "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"GLOBAL\", {Tipo}=\"evento\", DATETIME_FORMAT(SET_TIMEZONE({Plan_inicio}, 'Europe/Madrid'), 'YYYY-MM-DD')=\"{{100.ev_fecha}}\")",
+                "maxRecords": "1",
+                "useColumnId": false,
+                "formulaField": "formula"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 900,
+                  "y": 600
+                }
+              },
+              "onerror": [
+                {
+                  "id": 108,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 900,
+                      "y": 750
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 102,
+              "module": "util:FunctionAggregator2",
+              "version": 1,
+              "parameters": {
+                "fn": "sum",
+                "feeder": 101
+              },
+              "mapper": {
+                "value": "{{if(101.id; 1; 0)}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1200,
+                  "y": 600
+                }
+              }
+            },
+            {
+              "id": 103,
+              "module": "gemini-ai:createACompletionGeminiPro",
+              "version": 1,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "filter": {
+                "name": "Aún no hay eventos registrados hoy",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{ifempty(102.result; 0)}}",
+                      "b": "0",
+                      "o": "number:equal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "model": "gemini-3.8-flash",
+                "contents": [
+                  {
+                    "role": "user",
+                    "parts": [
+                      {
+                        "text": "Hoy es {{100.ev_dia}}, {{100.ev_fecha_larga}}. Busca la agenda de eventos financieros de hoy que seguiría un asesor financiero en Madrid: datos macroeconómicos de España, la zona euro y Estados Unidos, decisiones o comparecencias de bancos centrales, subastas de deuda relevantes y resultados empresariales del Ibex 35 y de las grandes cotizadas de Estados Unidos.\nIncluye solo eventos de hoy con hora confirmada por una fuente, con la hora convertida a la de Madrid. Entre 3 y 8 eventos, los de mayor impacto.\nResponde únicamente con una línea por evento, ordenadas por hora, con este formato exacto y sin nada más:\nHH:mm|evento en una frase|ámbito (España, Zona euro, EE. UU. o empresa)|fuente\nSi hoy no hay eventos relevantes, responde únicamente: NINGUNO",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ],
+                "generationConfig": {
+                  "imageConfig": {},
+                  "thinkingConfig": {}
+                },
+                "system_instruction": {
+                  "parts": [
+                    {
+                      "text": "{{ifempty(1.descripcion; 1.agente)}}"
+                    }
+                  ]
+                },
+                "google_search_context": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1500,
+                  "y": 600
+                }
+              },
+              "onerror": [
+                {
+                  "id": 109,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 1500,
+                      "y": 750
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 104,
+              "module": "builtin:BasicFeeder",
+              "version": 1,
+              "parameters": {},
+              "mapper": {
+                "array": "{{split(103.result; newline)}}"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1800,
+                  "y": 600
+                }
+              }
+            },
+            {
+              "id": 105,
+              "module": "util:SetVariables",
+              "version": 1,
+              "parameters": {},
+              "filter": {
+                "name": "Línea con formato HH:mm|…",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{trim(104.value)}}",
+                      "b": "^\\d{2}:\\d{2}\\|",
+                      "o": "text:pattern"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                  {
+                    "name": "ev_hora",
+                    "value": "{{trim(get(split(trim(104.value); \"|\"); 1))}}"
+                  },
+                  {
+                    "name": "ev_texto",
+                    "value": "{{trim(get(split(trim(104.value); \"|\"); 2))}}"
+                  },
+                  {
+                    "name": "ev_ambito",
+                    "value": "{{trim(get(split(trim(104.value); \"|\"); 3))}}"
+                  },
+                  {
+                    "name": "ev_fuente",
+                    "value": "{{trim(get(split(trim(104.value); \"|\"); 4))}}"
+                  },
+                  {
+                    "name": "ev_inicio_local",
+                    "value": "{{100.ev_fecha}} {{trim(get(split(trim(104.value); \"|\"); 1))}}"
+                  }
+                ]
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2100,
+                  "y": 600
+                }
+              }
+            },
+            {
+              "id": 106,
+              "module": "http:MakeRequest",
+              "version": 4,
+              "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+              },
+              "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_ESCRIBIR>",
+                "method": "post",
+                "timeout": "120",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": true,
+                "jsonStringBodyContent": "{\"memoria\": \"Evento financiero del {{100.ev_dia}} {{100.ev_fecha_larga}} a las {{105.ev_hora}}: {{escapeJSON(105.ev_texto)}} ({{escapeJSON(105.ev_ambito)}}; fuente: {{escapeJSON(105.ev_fuente)}})\", \"tipo\": \"evento\", \"agente\": \"{{1.agente}}\", \"chat_id\": \"GLOBAL\", \"autor\": \"sistema\", \"plan_ubicacion\": \"{{escapeJSON(105.ev_ambito)}}\", \"plan_inicio\": \"{{formatDate(parseDate(105.ev_inicio_local; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"YYYY-MM-DDTHH:mm:ssZ\")}}\", \"plan_duracion_min\": \"30\"}",
+                "requestCompressedContent": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2400,
+                  "y": 600
+                }
+              },
+              "onerror": [
+                {
+                  "id": 107,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 2700,
+                      "y": 750
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": true,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu1.make.com",
+    "notes": [
+      {
+        "moduleIds": [
+          1
+        ],
+        "content": "<p><strong>Webhook de (5) Planificar</strong></p><p>Origen: (1) Gateway (módulo 13), (10) Despertador (módulo 2).</p><p>Destino: este escenario.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          13
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (5) Planificar, módulo 13.</p><p>Destino: (2) Escribir.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          27
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (5) Planificar, módulo 27.</p><p>Destino: (2) Escribir.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          106
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (5) Planificar, módulo 106.</p><p>Destino: (2) Escribir.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      }
+    ]
+  }
+}

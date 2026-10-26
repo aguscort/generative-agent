@@ -1,0 +1,399 @@
+{
+  "name": "[Human_proxy] (8/9) | Estudiar",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": null,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 2,
+      "module": "gemini-ai:createACompletionGeminiPro",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "model": "gemini-3.8-flash",
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Mensaje que {{ifempty(1.usuario; \"el interlocutor\")}} le ha enviado a {{1.agente}}:\n«{{1.mensaje}}»\n\nPerfil de {{1.agente}}: {{ifempty(1.descripcion; \"(sin descripción)\")}}\n\n¿Contiene una pregunta o un requerimiento concreto sobre un tema del ámbito profesional (técnico, legal, fiscal, económico, de negocio, de una herramienta, una norma, un dato o un procedimiento) cuya respuesta exige información verificable que un profesional tendría que consultar? No cuentan los saludos, la charla, las opiniones, los asuntos personales o emocionales ni lo que se responde con sentido común.\nSi es una cuestión profesional pero falta un dato imprescindible para poder investigarla con fiabilidad (por ejemplo el país, la herramienta, la versión, el sector o el tipo de contrato) y no se deduce del mensaje, marca aclarar como true e indica en duda qué dato falta.\nDevuelve exclusivamente un JSON: {\"investigar\": true o false, \"aclarar\": true o false, \"duda\": \"el dato que falta, o vacío\", \"tema\": \"el tema en pocas palabras\", \"pregunta\": \"la pregunta concreta, reformulada para buscarla en internet\"}",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "generationConfig": {
+          "imageConfig": {},
+          "responseSchema": "{\"type\":\"object\",\"properties\":{\"investigar\":{\"type\":\"boolean\"},\"tema\":{\"type\":\"string\"},\"pregunta\":{\"type\":\"string\"},\"aclarar\":{\"type\":\"boolean\"},\"duda\":{\"type\":\"string\"}},\"required\":[\"investigar\",\"aclarar\",\"duda\",\"tema\",\"pregunta\"]}",
+          "thinkingConfig": {},
+          "responseMimeType": "application/json"
+        },
+        "system_instruction": {}
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 900,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 300,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "module": "json:ParseJSON",
+      "version": 1,
+      "parameters": {
+        "type": ""
+      },
+      "mapper": {
+        "json": "{{2.result}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 901,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 600,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "mapper": null,
+      "metadata": {
+        "designer": {
+          "x": 900,
+          "y": 0
+        }
+      },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 4,
+              "module": "http:MakeRequest",
+              "version": 4,
+              "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+              },
+              "filter": {
+                "name": "Investigar (sin dudas)",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{3.investigar}}",
+                      "b": "true",
+                      "o": "boolean:equal"
+                    },
+                    {
+                      "a": "{{3.aclarar}}",
+                      "b": "true",
+                      "o": "boolean:notequal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_RECUPERAR>",
+                "method": "post",
+                "timeout": "120",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": true,
+                "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"consulta\": \"{{escapeJSON(3.pregunta)}}\", \"k\": 5}",
+                "requestCompressedContent": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1200,
+                  "y": -100
+                }
+              },
+              "onerror": [
+                {
+                  "id": 902,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 1200,
+                      "y": 50
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "module": "gemini-ai:createACompletionGeminiPro",
+              "version": 1,
+              "parameters": {
+                "__IMTCONN__": null
+              },
+              "mapper": {
+                "model": "gemini-3.8-flash",
+                "contents": [
+                  {
+                    "role": "user",
+                    "parts": [
+                      {
+                        "text": "{{1.agente}} necesita saber esto para su trabajo: {{3.pregunta}}\n\nLo que ya recuerda al respecto:\n{{ifempty(4.data.texto; \"(nada)\")}}\n\nSi lo que ya recuerda responde la pregunta de forma suficiente, responde exactamente YA_SABIDO y nada más.\nSi no, investiga con búsquedas en internet y redacta una pieza de conocimiento muy pragmática, de 60 palabras como máximo, en texto plano: la respuesta concreta, el dato o el procedimiento clave y, si aplica, la cifra, el plazo o la condición que importa. Sin introducción, sin opiniones y sin relleno. Termina con «(Fuente: nombre del sitio)». Si las fuentes no permiten una respuesta fiable, dilo en una sola frase.",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ],
+                "generationConfig": {
+                  "imageConfig": {},
+                  "thinkingConfig": {}
+                },
+                "system_instruction": {},
+                "google_search_context": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1500,
+                  "y": -100
+                }
+              },
+              "onerror": [
+                {
+                  "id": 903,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 1500,
+                      "y": 50
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "module": "http:MakeRequest",
+              "version": 4,
+              "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+              },
+              "filter": {
+                "name": "Conocimiento nuevo",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{5.result}}",
+                      "b": "YA_SABIDO",
+                      "o": "text:notcontain"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_ESCRIBIR>",
+                "method": "post",
+                "timeout": "120",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": true,
+                "jsonStringBodyContent": "{\"memoria\": \"{{1.agente}} se ha informado sobre {{escapeJSON(3.tema)}}: {{escapeJSON(trim(5.result))}}\", \"tipo\": \"conocimiento\", \"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"autor\": \"sistema\"}",
+                "requestCompressedContent": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1800,
+                  "y": -100
+                }
+              },
+              "onerror": [
+                {
+                  "id": 904,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 1800,
+                      "y": 50
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 7,
+              "module": "http:MakeRequest",
+              "version": 4,
+              "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+              },
+              "filter": {
+                "name": "Falta un dato: interpelar",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{3.investigar}}",
+                      "b": "true",
+                      "o": "boolean:equal"
+                    },
+                    {
+                      "a": "{{3.aclarar}}",
+                      "b": "true",
+                      "o": "boolean:equal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_INTERPELAR>",
+                "method": "post",
+                "timeout": "120",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": false,
+                "allowRedirects": true,
+                "stopOnHttpError": true,
+                "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"usuario\": \"{{escapeJSON(1.usuario)}}\", \"motivo\": \"{{escapeJSON(3.duda)}} (para poder informarse sobre: {{escapeJSON(3.tema)}})\", \"contexto\": \"{{escapeJSON(1.mensaje)}}\", \"descripcion\": \"{{escapeJSON(1.descripcion)}}\"}",
+                "requestCompressedContent": true
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1200,
+                  "y": 200
+                }
+              },
+              "onerror": [
+                {
+                  "id": 905,
+                  "module": "builtin:Ignore",
+                  "version": 1,
+                  "metadata": {
+                    "designer": {
+                      "x": 1200,
+                      "y": 350
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu1.make.com",
+    "notes": [
+      {
+        "moduleIds": [
+          1
+        ],
+        "content": "<p><strong>Webhook de (8) Estudiar</strong></p><p>Origen: (1) Gateway (módulo 15).</p><p>Destino: este escenario.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          4
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (8) Estudiar, módulo 4.</p><p>Destino: (4) Recuperar.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          6
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (8) Estudiar, módulo 6.</p><p>Destino: (2) Escribir.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          7
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (8) Estudiar, módulo 7.</p><p>Destino: (9) Interpelar.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      }
+    ]
+  }
+}

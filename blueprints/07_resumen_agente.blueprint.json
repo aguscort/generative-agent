@@ -1,0 +1,523 @@
+{
+  "name": "[Human_proxy] (7/9) | Resumen del agente",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": null,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 2,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "mapper": null,
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        }
+      },
+      "routes": [
+        {
+          "flow": [
+            {
+              "id": 3,
+              "module": "gateway:WebhookRespond",
+              "version": 1,
+              "parameters": {},
+              "filter": {
+                "name": "Resumen desactivado (OFF)",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{upper(ifempty(1.modo; \"OFF\"))}}",
+                      "b": "ON",
+                      "o": "text:notequal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "body": "{\"resumen\": \"\", \"estado\": \"OFF\"}",
+                "status": "200",
+                "headers": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": -200
+                }
+              }
+            }
+          ]
+        },
+        {
+          "flow": [
+            {
+              "id": 4,
+              "module": "datastore:GetRecord",
+              "version": 1,
+              "parameters": {
+                "datastore": null
+              },
+              "filter": {
+                "name": "Resumen activado (ON)",
+                "conditions": [
+                  [
+                    {
+                      "a": "{{upper(ifempty(1.modo; \"OFF\"))}}",
+                      "b": "ON",
+                      "o": "text:equal"
+                    }
+                  ]
+                ]
+              },
+              "mapper": {
+                "key": "{{1.agente}}|{{1.chat_id}}",
+                "returnWrapped": false
+              },
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 100
+                }
+              }
+            },
+            {
+              "id": 5,
+              "module": "builtin:BasicRouter",
+              "version": 1,
+              "mapper": null,
+              "metadata": {
+                "designer": {
+                  "x": 900,
+                  "y": 100
+                }
+              },
+              "routes": [
+                {
+                  "flow": [
+                    {
+                      "id": 6,
+                      "module": "gateway:WebhookRespond",
+                      "version": 1,
+                      "parameters": {},
+                      "filter": {
+                        "name": "Caché vigente (< 6 h)",
+                        "conditions": [
+                          [
+                            {
+                              "a": "{{4.resumen}}",
+                              "o": "exist"
+                            },
+                            {
+                              "a": "{{4.actualizado}}",
+                              "b": "{{addHours(now; -24)}}",
+                              "o": "date:greater"
+                            }
+                          ]
+                        ]
+                      },
+                      "mapper": {
+                        "body": "{\"resumen\": \"{{escapeJSON(4.resumen)}}\", \"estado\": \"cache\"}",
+                        "status": "200",
+                        "headers": [
+                          {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                          }
+                        ]
+                      },
+                      "metadata": {
+                        "designer": {
+                          "x": 1200,
+                          "y": 0
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "flow": [
+                    {
+                      "id": 19,
+                      "module": "gateway:WebhookRespond",
+                      "version": 1,
+                      "parameters": {},
+                      "filter": {
+                        "name": "Sin caché o caducada",
+                        "conditions": [
+                          [
+                            {
+                              "a": "{{4.resumen}}",
+                              "o": "notexist"
+                            }
+                          ],
+                          [
+                            {
+                              "a": "{{4.actualizado}}",
+                              "b": "{{addHours(now; -24)}}",
+                              "o": "date:lessorequal"
+                            }
+                          ]
+                        ]
+                      },
+                      "mapper": {
+                        "body": "{\"resumen\": \"{{escapeJSON(4.resumen)}}\", \"estado\": \"regenerando\"}",
+                        "status": "200",
+                        "headers": [
+                          {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                          }
+                        ]
+                      },
+                      "metadata": {
+                        "designer": {
+                          "x": 1200,
+                          "y": 300
+                        }
+                      }
+                    },
+                    {
+                      "id": 10,
+                      "module": "http:MakeRequest",
+                      "version": 4,
+                      "parameters": {
+                        "tlsType": "",
+                        "authenticationType": "noAuth"
+                      },
+                      "mapper": {
+                        "url": "https://hook.eu1.make.com/<WEBHOOK_RECUPERAR>",
+                        "method": "post",
+                        "timeout": "60",
+                        "contentType": "json",
+                        "inputMethod": "jsonString",
+                        "shareCookies": false,
+                        "parseResponse": true,
+                        "allowRedirects": true,
+                        "stopOnHttpError": true,
+                        "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"consulta\": \"rasgos esenciales de la personalidad de {{1.agente}}\", \"k\": 15}",
+                        "requestCompressedContent": true
+                      },
+                      "metadata": {
+                        "designer": {
+                          "x": 1500,
+                          "y": 300
+                        }
+                      }
+                    },
+                    {
+                      "id": 11,
+                      "module": "gemini-ai:createACompletionGeminiPro",
+                      "version": 1,
+                      "parameters": {
+                        "__IMTCONN__": null
+                      },
+                      "mapper": {
+                        "model": "gemini-3.8-flash",
+                        "contents": [
+                          {
+                            "role": "user",
+                            "parts": [
+                              {
+                                "text": "¿Cómo describirías los rasgos esenciales de la personalidad de {{1.agente}} a partir de las siguientes afirmaciones?\n{{10.data.texto}}\n\nResponde en una o dos frases, en tercera persona y en texto plano (sin formato), sin inventar nada que no se deduzca de las afirmaciones. Si no hay afirmaciones suficientes, responde únicamente: sin datos.",
+                                "type": "text"
+                              }
+                            ]
+                          }
+                        ],
+                        "generationConfig": {
+                          "imageConfig": {},
+                          "thinkingConfig": {}
+                        },
+                        "system_instruction": {}
+                      },
+                      "metadata": {
+                        "designer": {
+                          "x": 1800,
+                          "y": 300
+                        }
+                      }
+                    },
+                    {
+                      "id": 12,
+                      "module": "http:MakeRequest",
+                      "version": 4,
+                      "parameters": {
+                        "tlsType": "",
+                        "authenticationType": "noAuth"
+                      },
+                      "mapper": {
+                        "url": "https://hook.eu1.make.com/<WEBHOOK_RECUPERAR>",
+                        "method": "post",
+                        "timeout": "60",
+                        "contentType": "json",
+                        "inputMethod": "jsonString",
+                        "shareCookies": false,
+                        "parseResponse": true,
+                        "allowRedirects": true,
+                        "stopOnHttpError": true,
+                        "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"consulta\": \"ocupación diaria actual de {{1.agente}}\", \"k\": 15}",
+                        "requestCompressedContent": true
+                      },
+                      "metadata": {
+                        "designer": {
+                          "x": 2100,
+                          "y": 300
+                        }
+                      }
+                    },
+                    {
+                      "id": 13,
+                      "module": "gemini-ai:createACompletionGeminiPro",
+                      "version": 1,
+                      "parameters": {
+                        "__IMTCONN__": null
+                      },
+                      "mapper": {
+                        "model": "gemini-3.8-flash",
+                        "contents": [
+                          {
+                            "role": "user",
+                            "parts": [
+                              {
+                                "text": "¿Cuál es la ocupación diaria actual de {{1.agente}} a partir de las siguientes afirmaciones?\n{{12.data.texto}}\n\nResponde en una o dos frases, en tercera persona y en texto plano (sin formato), sin inventar nada que no se deduzca de las afirmaciones. Si no hay afirmaciones suficientes, responde únicamente: sin datos.",
+                                "type": "text"
+                              }
+                            ]
+                          }
+                        ],
+                        "generationConfig": {
+                          "imageConfig": {},
+                          "thinkingConfig": {}
+                        },
+                        "system_instruction": {}
+                      },
+                      "metadata": {
+                        "designer": {
+                          "x": 2400,
+                          "y": 300
+                        }
+                      }
+                    },
+                    {
+                      "id": 14,
+                      "module": "http:MakeRequest",
+                      "version": 4,
+                      "parameters": {
+                        "tlsType": "",
+                        "authenticationType": "noAuth"
+                      },
+                      "mapper": {
+                        "url": "https://hook.eu1.make.com/<WEBHOOK_RECUPERAR>",
+                        "method": "post",
+                        "timeout": "60",
+                        "contentType": "json",
+                        "inputMethod": "jsonString",
+                        "shareCookies": false,
+                        "parseResponse": true,
+                        "allowRedirects": true,
+                        "stopOnHttpError": true,
+                        "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"consulta\": \"cómo se siente {{1.agente}} respecto a su progreso reciente en la vida\", \"k\": 15}",
+                        "requestCompressedContent": true
+                      },
+                      "metadata": {
+                        "designer": {
+                          "x": 2700,
+                          "y": 300
+                        }
+                      }
+                    },
+                    {
+                      "id": 15,
+                      "module": "gemini-ai:createACompletionGeminiPro",
+                      "version": 1,
+                      "parameters": {
+                        "__IMTCONN__": null
+                      },
+                      "mapper": {
+                        "model": "gemini-3.8-flash",
+                        "contents": [
+                          {
+                            "role": "user",
+                            "parts": [
+                              {
+                                "text": "¿Cómo se siente {{1.agente}} respecto a su progreso reciente en la vida a partir de las siguientes afirmaciones?\n{{14.data.texto}}\n\nResponde en una o dos frases, en tercera persona y en texto plano (sin formato), sin inventar nada que no se deduzca de las afirmaciones. Si no hay afirmaciones suficientes, responde únicamente: sin datos.",
+                                "type": "text"
+                              }
+                            ]
+                          }
+                        ],
+                        "generationConfig": {
+                          "imageConfig": {},
+                          "thinkingConfig": {}
+                        },
+                        "system_instruction": {}
+                      },
+                      "metadata": {
+                        "designer": {
+                          "x": 3000,
+                          "y": 300
+                        }
+                      }
+                    },
+                    {
+                      "id": 16,
+                      "module": "util:SetVariables",
+                      "version": 1,
+                      "parameters": {},
+                      "mapper": {
+                        "scope": "roundtrip",
+                        "variables": [
+                          {
+                            "name": "resumen",
+                            "value": "Resumen de {{1.agente}} según su memoria de esta conversación (actualizado a las {{formatDate(now; \"HH:mm [del] DD/MM/YYYY\"; \"Europe/Madrid\")}}):\nRasgos esenciales: {{trim(11.result)}}\nOcupación diaria actual: {{trim(13.result)}}\nCómo se siente respecto a su progreso reciente: {{trim(15.result)}}"
+                          }
+                        ]
+                      },
+                      "metadata": {
+                        "designer": {
+                          "x": 3300,
+                          "y": 300
+                        }
+                      }
+                    },
+                    {
+                      "id": 18,
+                      "module": "datastore:AddRecord",
+                      "version": 1,
+                      "parameters": {
+                        "datastore": null
+                      },
+                      "filter": {
+                        "name": "Hay algún dato que cachear",
+                        "conditions": [
+                          [
+                            {
+                              "a": "{{lower(11.result)}}",
+                              "b": "sin datos",
+                              "o": "text:notcontain"
+                            }
+                          ],
+                          [
+                            {
+                              "a": "{{lower(13.result)}}",
+                              "b": "sin datos",
+                              "o": "text:notcontain"
+                            }
+                          ],
+                          [
+                            {
+                              "a": "{{lower(15.result)}}",
+                              "b": "sin datos",
+                              "o": "text:notcontain"
+                            }
+                          ]
+                        ]
+                      },
+                      "mapper": {
+                        "key": "{{1.agente}}|{{1.chat_id}}",
+                        "data": {
+                          "agente": "{{1.agente}}",
+                          "chat_id": "{{1.chat_id}}",
+                          "resumen": "{{16.resumen}}",
+                          "actualizado": "{{now}}"
+                        },
+                        "overwrite": true
+                      },
+                      "metadata": {
+                        "designer": {
+                          "x": 3600,
+                          "y": 300
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu1.make.com",
+    "notes": [
+      {
+        "moduleIds": [
+          1
+        ],
+        "content": "<p><strong>Webhook de (7) Resumen del agente</strong></p><p>Origen: (6) Responder (módulo 9).</p><p>Destino: este escenario.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          10
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (7) Resumen del agente, módulo 10.</p><p>Destino: (4) Recuperar.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          12
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (7) Resumen del agente, módulo 12.</p><p>Destino: (4) Recuperar.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          14
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (7) Resumen del agente, módulo 14.</p><p>Destino: (4) Recuperar.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      }
+    ]
+  }
+}

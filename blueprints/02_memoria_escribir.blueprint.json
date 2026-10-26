@@ -1,0 +1,266 @@
+{
+  "name": "[Human_proxy] (2/9) | Memoria: Escribir",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": null,
+        "maxResults": 1
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 2,
+      "module": "gemini-ai:createACompletionGeminiPro",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "model": "gemini-3.8-flash",
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "En una escala del 1 al 10, donde 1 es puramente mundano (p. ej., cepillarse los dientes, hacer la cama) y 10 es extremadamente conmovedor (p. ej., una ruptura, ser admitido en la universidad), puntúa la probable intensidad emocional del siguiente recuerdo de {{1.agente}}.\nResponde únicamente con un número entero del 1 al 10.\nRecuerdo: {{1.memoria}}\nPuntuación:",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "generationConfig": {
+          "imageConfig": {},
+          "thinkingConfig": {}
+        },
+        "system_instruction": {}
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 3,
+      "module": "gemini-ai:generateEmbeddings",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "model": "gemini-embedding-2",
+        "content": {
+          "parts": [
+            {
+              "text": "{{1.memoria}}",
+              "type": "text"
+            }
+          ]
+        },
+        "output_dimensionality": "768"
+      },
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 4,
+      "module": "airtable:ActionCreateRecord",
+      "version": 3,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "base": "<AIRTABLE_BASE_ID>",
+        "table": "<AIRTABLE_TABLE_ID>",
+        "record": {
+          "<FLD_PLAN_INICIO>": "{{1.plan_inicio}}",
+          "<FLD_PLAN_DURACION_MIN>": "{{1.plan_duracion_min}}",
+          "<FLD_EVIDENCIAS>": "{{1.evidencias}}",
+          "<FLD_CHAT_ID>": "{{1.chat_id}}",
+          "<FLD_AUTOR>": "{{1.autor}}",
+          "<FLD_AGENTE>": "{{1.agente}}",
+          "<FLD_MEMORIA>": "{{1.memoria}}",
+          "<FLD_TIPO>": "{{1.tipo}}",
+          "<FLD_IMPORTANCIA>": "{{2.result}}",
+          "<FLD_PLAN_UBICACION>": "{{1.plan_ubicacion}}",
+          "<FLD_ULTIMO_ACCESO>": "{{now}}",
+          "<FLD_EMBEDDING>": "[{{3.embedding.values}}]"
+        },
+        "typecast": true,
+        "useColumnId": false
+      },
+      "metadata": {
+        "designer": {
+          "x": 900,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 5,
+      "module": "gateway:WebhookRespond",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "body": "{\"id\": \"{{4.id}}\", \"importancia\": \"{{4.Importancia}}\", \"tipo\": \"{{1.tipo}}\"}",
+        "status": "200",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "metadata": {
+        "designer": {
+          "x": 1200,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 6,
+      "module": "airtable:ActionSearchRecords",
+      "version": 3,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "base": "<AIRTABLE_BASE_ID>",
+        "table": "<AIRTABLE_TABLE_ID>",
+        "fields": [
+          "Importancia"
+        ],
+        "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"{{1.chat_id}}\", {Tipo}=\"observacion\", NOT({Reflejada}))",
+        "maxRecords": "500",
+        "useColumnId": false,
+        "formulaField": "formula"
+      },
+      "metadata": {
+        "designer": {
+          "x": 1500,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 7,
+      "module": "util:FunctionAggregator2",
+      "version": 1,
+      "parameters": {
+        "fn": "sum",
+        "feeder": 6
+      },
+      "mapper": {
+        "value": "{{6.Importancia}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 1800,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 8,
+      "module": "http:MakeRequest",
+      "version": 4,
+      "parameters": {
+        "tlsType": "",
+        "authenticationType": "noAuth"
+      },
+      "filter": {
+        "name": "Umbral reflexion > 150 (solo observaciones)",
+        "conditions": [
+          [
+            {
+              "a": "{{7.result}}",
+              "b": "150",
+              "o": "number:greater"
+            },
+            {
+              "a": "{{1.tipo}}",
+              "b": "observacion",
+              "o": "text:equal"
+            }
+          ]
+        ]
+      },
+      "mapper": {
+        "url": "https://hook.eu1.make.com/<WEBHOOK_REFLEXIONAR>",
+        "method": "post",
+        "timeout": "40",
+        "contentType": "json",
+        "inputMethod": "jsonString",
+        "shareCookies": false,
+        "parseResponse": true,
+        "allowRedirects": true,
+        "stopOnHttpError": true,
+        "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"importancia_acumulada\": {{7.result}}}",
+        "requestCompressedContent": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 2100,
+          "y": 0
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "instant": true,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu1.make.com",
+    "notes": [
+      {
+        "moduleIds": [
+          1
+        ],
+        "content": "<p><strong>Webhook de (2) Escribir</strong></p><p>Origen: (3) Reflexionar (módulo 11), (1) Gateway (módulo 4), (1) Gateway (módulo 5), (5) Planificar (módulo 13), (5) Planificar (módulo 27), (5) Planificar (módulo 106), (8) Estudiar (módulo 6), (9) Interpelar (módulo 6), (11) Percibir y reaccionar (módulo 10).</p><p>Destino: este escenario.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          8
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (2) Escribir, módulo 8.</p><p>Destino: (3) Reflexionar.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      }
+    ]
+  }
+}

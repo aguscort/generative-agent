@@ -1,0 +1,529 @@
+{
+  "name": "[Human_proxy] (11/11) | Percibir y reaccionar",
+  "flow": [
+    {
+      "id": 1,
+      "module": "datastore:GetRecord",
+      "version": 1,
+      "parameters": {
+        "datastore": null
+      },
+      "mapper": {
+        "key": "perfil|Borja",
+        "returnWrapped": false
+      },
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 901,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 0,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "module": "airtable:ActionSearchRecords",
+      "version": 3,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "base": "<AIRTABLE_BASE_ID>",
+        "sort": [
+          {
+            "field": "Plan_inicio",
+            "direction": "asc"
+          }
+        ],
+        "table": "<AIRTABLE_TABLE_ID>",
+        "fields": [
+          "Memoria",
+          "Plan_inicio"
+        ],
+        "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"GLOBAL\", {Tipo}=\"evento\", IS_AFTER({Plan_inicio}, DATEADD(NOW(), -120, 'minutes')), NOT(IS_AFTER({Plan_inicio}, DATEADD(NOW(), -60, 'minutes'))))",
+        "maxRecords": "5",
+        "useColumnId": false,
+        "formulaField": "formula"
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 902,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 300,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "module": "gemini-ai:createACompletionGeminiPro",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "filter": {
+        "name": "Hay un evento que revisar",
+        "conditions": [
+          [
+            {
+              "a": "{{2.id}}",
+              "o": "exist"
+            },
+            {
+              "a": "{{1.resumen}}",
+              "o": "exist"
+            }
+          ]
+        ]
+      },
+      "mapper": {
+        "model": "gemini-3.8-flash",
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Evento financiero previsto para hoy: {{2.Memoria}}\n\nBusca el resultado de este evento: el dato publicado, la decisión tomada o las cifras presentadas, y la reacción inmediata del mercado si la hay. Si todavía no se ha publicado, responde únicamente: NO_PUBLICADO\nSi se ha publicado, responde en un máximo de 60 palabras, con las cifras exactas, y termina con la fuente entre paréntesis.",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "generationConfig": {
+          "imageConfig": {},
+          "thinkingConfig": {}
+        },
+        "system_instruction": {
+          "parts": [
+            {
+              "text": "{{1.resumen}}"
+            }
+          ]
+        },
+        "google_search_context": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 903,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 600,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "module": "airtable:ActionSearchRecords",
+      "version": 3,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "filter": {
+        "name": "Ya publicado",
+        "conditions": [
+          [
+            {
+              "a": "{{3.result}}",
+              "o": "exist"
+            },
+            {
+              "a": "{{3.result}}",
+              "b": "NO_PUBLICADO",
+              "o": "text:notcontain"
+            }
+          ]
+        ]
+      },
+      "mapper": {
+        "base": "<AIRTABLE_BASE_ID>",
+        "table": "<AIRTABLE_TABLE_ID>",
+        "fields": [
+          "Chat_ID"
+        ],
+        "formula": "AND({Agente}=\"{{1.agente}}\", {Autor}=\"usuario\", {Chat_ID}!=\"GLOBAL\")",
+        "maxRecords": "1000",
+        "useColumnId": false,
+        "formulaField": "formula"
+      },
+      "metadata": {
+        "designer": {
+          "x": 900,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 904,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 900,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "module": "util:TextAggregator",
+      "version": 1,
+      "parameters": {
+        "feeder": 4,
+        "rowSeparator": "\n"
+      },
+      "mapper": {
+        "value": "{{4.Chat_ID}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 1200,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 6,
+      "module": "builtin:BasicFeeder",
+      "version": 1,
+      "parameters": {},
+      "filter": {
+        "name": "Hay chats activos",
+        "conditions": [
+          [
+            {
+              "a": "{{trim(5.text)}}",
+              "o": "exist"
+            }
+          ]
+        ]
+      },
+      "mapper": {
+        "array": "{{deduplicate(split(5.text; newline))}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 1500,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 7,
+      "module": "datastore:GetRecord",
+      "version": 1,
+      "parameters": {
+        "datastore": null
+      },
+      "filter": {
+        "name": "Chat válido",
+        "conditions": [
+          [
+            {
+              "a": "{{6.value}}",
+              "o": "exist"
+            }
+          ]
+        ]
+      },
+      "mapper": {
+        "key": "{{1.agente}}|{{6.value}}",
+        "returnWrapped": false
+      },
+      "metadata": {
+        "designer": {
+          "x": 1800,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 907,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 1800,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "module": "gemini-ai:createACompletionGeminiPro",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "model": "gemini-3.8-flash",
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Evento: {{2.Memoria}}\nResultado: {{3.result}}\n\nCartera e intereses de su interlocutor: {{ifempty(7.cartera; \"NO HAY CARTERA REGISTRADA\")}}\n\nSi hay cartera registrada, redacta en tercera persona y en un máximo de 60 palabras qué implica este resultado para esa cartera en concreto (qué posiciones o intereses se ven afectados, en qué sentido y con qué intensidad), manteniendo la fuente; si ninguna posición se ve afectada, dilo en una frase. Si no hay cartera registrada, redacta un comentario genérico de {{1.agente}} sobre qué implica este resultado para un inversor particular, en un máximo de 60 palabras y con la fuente.\nEn duda, formula en una frase el dato que a {{1.agente}} le falta y que solo su interlocutor puede darle para valorar el impacto (por ejemplo, si mantiene una posición o su horizonte); si no le falta nada o no hay cartera, deja duda vacía.",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "generationConfig": {
+          "imageConfig": {},
+          "responseSchema": "{\"type\": \"object\", \"properties\": {\"conocimiento\": {\"type\": \"string\"}, \"duda\": {\"type\": \"string\"}}, \"required\": [\"conocimiento\", \"duda\"]}",
+          "thinkingConfig": {},
+          "responseMimeType": "application/json"
+        },
+        "system_instruction": {
+          "parts": [
+            {
+              "text": "{{1.resumen}}"
+            }
+          ]
+        }
+      },
+      "metadata": {
+        "designer": {
+          "x": 2100,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 908,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 2100,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "module": "json:ParseJSON",
+      "version": 1,
+      "parameters": {
+        "type": ""
+      },
+      "mapper": {
+        "json": "{{8.result}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 2400,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 909,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 2400,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "module": "http:MakeRequest",
+      "version": 4,
+      "parameters": {
+        "tlsType": "",
+        "authenticationType": "noAuth"
+      },
+      "filter": {
+        "name": "Hay conocimiento",
+        "conditions": [
+          [
+            {
+              "a": "{{9.conocimiento}}",
+              "o": "exist"
+            }
+          ]
+        ]
+      },
+      "mapper": {
+        "url": "https://hook.eu1.make.com/<WEBHOOK_ESCRIBIR>",
+        "method": "post",
+        "timeout": "120",
+        "contentType": "json",
+        "inputMethod": "jsonString",
+        "shareCookies": false,
+        "parseResponse": true,
+        "allowRedirects": true,
+        "stopOnHttpError": true,
+        "jsonStringBodyContent": "{\"memoria\": \"{{escapeJSON(9.conocimiento)}}\", \"tipo\": \"conocimiento\", \"agente\": \"{{1.agente}}\", \"chat_id\": \"{{6.value}}\", \"autor\": \"sistema\"}",
+        "requestCompressedContent": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 2700,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 910,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 2700,
+              "y": 150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "module": "http:MakeRequest",
+      "version": 4,
+      "parameters": {
+        "tlsType": "",
+        "authenticationType": "noAuth"
+      },
+      "filter": {
+        "name": "Queda una duda",
+        "conditions": [
+          [
+            {
+              "a": "{{trim(9.duda)}}",
+              "o": "exist"
+            }
+          ]
+        ]
+      },
+      "mapper": {
+        "url": "https://hook.eu1.make.com/<WEBHOOK_INTERPELAR>",
+        "method": "post",
+        "timeout": "120",
+        "contentType": "json",
+        "inputMethod": "jsonString",
+        "shareCookies": false,
+        "parseResponse": false,
+        "allowRedirects": true,
+        "stopOnHttpError": true,
+        "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{6.value}}\", \"descripcion\": \"{{escapeJSON(1.resumen)}}\", \"motivo\": \"{{escapeJSON(9.duda)}}\", \"contexto\": \"{{escapeJSON(2.Memoria)}} Resultado: {{escapeJSON(3.result)}} Implicación: {{escapeJSON(9.conocimiento)}}\"}",
+        "requestCompressedContent": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 3000,
+          "y": 0
+        }
+      },
+      "onerror": [
+        {
+          "id": 911,
+          "module": "builtin:Ignore",
+          "version": 1,
+          "metadata": {
+            "designer": {
+              "x": 3000,
+              "y": 150
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": false,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "slots": null,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "eu1.make.com",
+    "notes": [
+      {
+        "moduleIds": [
+          10
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (11) Percibir y reaccionar, módulo 10.</p><p>Destino: (2) Escribir.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          11
+        ],
+        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (11) Percibir y reaccionar, módulo 11.</p><p>Destino: (9) Interpelar.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      },
+      {
+        "moduleIds": [
+          1
+        ],
+        "content": "<p><strong>Disparo programado</strong></p><p>Origen: la programación de Make.</p><p>Destino: este escenario, (11) Percibir y reaccionar.</p>",
+        "isFilterNote": false,
+        "metadata": {
+          "color": "#9138FE"
+        }
+      }
+    ]
+  }
+}
