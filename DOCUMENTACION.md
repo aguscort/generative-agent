@@ -36,6 +36,34 @@ Un mensaje recorre el sistema así:
 4. El Gateway pasa el mensaje a Estudiar en segundo plano y, si el agente aún no tiene plan para hoy, llama a Planificar.
 5. Cada escritura suma la importancia de las observaciones aún no reflejadas y, por encima de 150, lanza Reflexionar.
 
+```mermaid
+flowchart LR
+    TG([Telegram · mensaje]) --> GW["(1) Gateway"]
+    DSP["(10) Despertador<br/>diario 5:00"] --> PL
+    PER["(11) Percibir<br/>cada hora"] --> INT
+    PER --> ESC
+    GW --> RS["(6) Responder"]
+    GW --> EST["(8) Estudiar"]
+    GW --> PL["(5) Planificar"]
+    GW --> ESC
+    RS --> RES["(7) Resumen<br/>del agente"]
+    RS --> REC
+    RES --> REC
+    EST --> INT["(9) Interpelar"]
+    EST --> REC
+    EST --> ESC
+    INT --> ESC
+    INT --> TGO([Telegram · pregunta])
+    PL --> ESC["(2) Escribir"]
+    ESC --> REF["(3) Reflexionar"]
+    REF --> REC["(4) Recuperar"]
+    REF -- reflexiones --> ESC
+    ESC -.-> AT[(Airtable<br/>Memory Stream)]
+    REC -.-> AT
+```
+
+Las flechas continuas son llamadas a webhook y las discontinuas, el acceso a la memoria. El diagrama solo muestra a Escribir y Recuperar tocando la tabla porque son los únicos que crean recuerdos y hacen la búsqueda puntuada; los demás escenarios también leen de Airtable para tareas simples, como contar mensajes o buscar el plan vigente.
+
 Sin que nadie escriba, el Despertador planifica el día a las 5:00 y Percibir revisa cada hora los eventos planificados. Esta descomposición permite probar cada función sola enviando un JSON a su URL, añadir canales con un Gateway nuevo y mantener las reglas de la memoria en un único sitio.
 
 | Escenario | Respuesta al llamante | Procesamiento |
@@ -52,7 +80,25 @@ Sin que nadie escriba, el Despertador planifica el día a las 5:00 y Percibir re
 | (10) Despertador | No aplica | Paralelo |
 | (11) Percibir y reaccionar | No aplica | Paralelo |
 
-Make no admite el módulo de respuesta de webhook en un escenario secuencial y, además, desactiva un escenario secuencial en cuanto una ejecución falla. Por eso Planificar no devuelve nada y los escenarios que no deben pararse llevan un manejador de error Ignore en sus módulos externos (sección 18).
+Make no admite el módulo de respuesta de webhook en un escenario secuencial y, además, desactiva un escenario secuencial en cuanto una ejecución falla. Por eso Planificar no devuelve nada y los escenarios que no deben pararse llevan un manejador de error Ignore en sus módulos externos (tabla de ajustes y sección 18).
+
+### Ajustes de cada escenario
+
+| Escenario | Programación | Procesamiento | Manejador Ignore |
+| --- | --- | --- | --- |
+| (1) Gateway | Inmediata, al llegar un mensaje | Secuencial | En los 11 módulos externos |
+| (2) Escribir | Inmediata | Paralelo | No |
+| (3) Reflexionar | Inmediata | Paralelo | No |
+| (4) Recuperar | Inmediata | Paralelo | No |
+| (5) Planificar | Inmediata | Secuencial | En los 13 módulos externos |
+| (6) Responder | Inmediata | Paralelo | No |
+| (7) Resumen del agente | Inmediata | Paralelo | No |
+| (8) Estudiar | Inmediata | Paralelo | En los 5 módulos externos |
+| (9) Interpelar | Inmediata | Paralelo | En los 5 módulos externos |
+| (10) Despertador | Diaria, 5:00 (Europe/Madrid) | Paralelo | En la llamada a Planificar |
+| (11) Percibir y reaccionar | Laborables, a cada hora en punto de 9:00 a 23:00 (Europe/Madrid) | Paralelo | En los 8 módulos externos |
+
+Todos usan el máximo de 3 errores seguidos de Make antes de desactivarse y confirman cada operación al terminarla (auto-commit).
 
 Cada escenario lleva notas de Make en sus webhooks y en cada llamada a webhook, con el origen y el destino:
 
@@ -103,10 +149,10 @@ Algunos textos siguen una convención porque otros escenarios buscan por ellos. 
 
 | Almacén | Clave | Contenido |
 | --- | --- | --- |
-| Caché (campos agente, chat_id, resumen, actualizado) | `perfil|<agente>` | Descripción del personaje, en el campo resumen, con chat_id `GLOBAL` |
-| | `<agente>|<chat_id>` | Resumen del agente en ese chat (escenario 7) |
-| | `rel|<agente>|<chat_id>` | Lo que el agente sabe de su interlocutor (escenario 6) |
-| Cartera (campos agente, chat_id, cartera, actualizado) | `<agente>|<chat_id>` | Posiciones e intereses del usuario en texto libre (escenario 11) |
+| Caché (campos agente, chat_id, resumen, actualizado) | `perfil\|<agente>` | Descripción del personaje, en el campo resumen, con chat_id `GLOBAL` |
+| | `<agente>\|<chat_id>` | Resumen del agente en ese chat (escenario 7) |
+| | `rel\|<agente>\|<chat_id>` | Lo que el agente sabe de su interlocutor (escenario 6) |
+| Cartera (campos agente, chat_id, cartera, actualizado) | `<agente>\|<chat_id>` | Posiciones e intereses del usuario en texto libre (escenario 11) |
 
 El perfil es la única fuente de la personalidad. Lo leen el Gateway, el Despertador y Percibir, y el Gateway lo pasa a Responder, Estudiar y Planificar. El límite de longitud de las respuestas no está en el perfil, porque solo aplica a Telegram: el Gateway añade «Limita la respuesta a una o dos frases, sin pasar de 20 palabras» únicamente en la llamada a Responder.
 
@@ -124,7 +170,7 @@ El Gateway es el único escenario que conoce Telegram; los demás son funciones 
 | 7 | Tools · Numeric aggregator | Los cuenta con `if(6.id; 1; 0)`, para que una búsqueda vacía cuente 0 |
 | 8 | Router | Ruta 1 si hay menos de 10 mensajes; ruta 2 si hay 10 o más |
 | R2 · 10 | Telegram Bot · Send a Text Message | Responde «Descansamos un poco. Inténtalo en un par de minutos» y no sigue |
-| R1 · 960 | Data store · Get a record | Lee `perfil|<agente>` |
+| R1 · 960 | Data store · Get a record | Lee `perfil\|<agente>` |
 | R1 · 2 | HTTP · POST a Responder | agente, `modo` (ON/OFF del resumen), chat_id, mensaje, usuario y descripción |
 | R1 · 957 | Slack · Create a message | Registro opcional de cada intercambio en un canal |
 | R1 · 3 | Telegram Bot · Send a Text Message | Envía la respuesta al chat |
@@ -346,9 +392,91 @@ Tras el webhook, un router reparte en tres rutas:
 | Es Borja, nuestro Financial Adviser | El agente financiero | Su plan de tareas, de 3 a 5 puntos |
 | Es Borja · capa de eventos | El agente financiero, a la vez que la anterior | La agenda de eventos financieros del día |
 
-Las dos rutas de tareas siguen los mismos pasos: calculan la fecha, comprueban si ya hay plan de hoy, leen el plan de ayer para dar continuidad, piden a Gemini el plan en trazos gruesos y luego su descomposición en bloques de hasta una hora (JSON con inicio, duración, actividad y lugar), y guardan cada bloque mediante Escribir con Tipo `plan`. Un bloque queda como «Plan de Borja para el viernes 23/10/2026, de 14:30 a 15:30: …».
+Las dos rutas de tareas siguen los mismos pasos. Los números de módulo son los de la ruta del agente financiero / la ruta genérica:
 
-La capa de eventos (módulos 100 a 109) comprueba si ya hay eventos de hoy y, si no, pide a Gemini con búsqueda de Google la agenda financiera del día: de 3 a 8 eventos con hora confirmada, en hora de Madrid, de datos macroeconómicos de España, la zona euro y Estados Unidos, bancos centrales, subastas de deuda y resultados del Ibex 35 y de grandes empresas americanas. Gemini devuelve una línea por evento con el formato `HH:mm|evento|ámbito|fuente`. Cada línea válida se guarda con Tipo `evento`, la hora en Plan_inicio, 30 minutos de duración y el ámbito en Plan_ubicacion. Responder no confunde los eventos con lo que el agente está haciendo, porque solo busca registros de tipo `plan`.
+| # | Módulo | Qué hace |
+| --- | --- | --- |
+| 17 / 3 | Tools · Set variables | Fecha de hoy (o la recibida en `fecha`), ayer, día de la semana en español y fecha larga |
+| 18 / 4 | Airtable · Search records | ¿Hay ya algún plan del agente con fecha de hoy? |
+| 19 / 5 | Tools · Numeric aggregator | Los cuenta con `if(id; 1; 0)` |
+| 20 / 6 | Airtable · Search records | Los planes de ayer, hasta 50, para dar continuidad |
+| 21 / 7 | Tools · Text aggregator | Su texto |
+| 22 / 8 | Gemini | Plan del día en trazos gruesos; solo si no hay plan de hoy |
+| 23 / 9 | Gemini (salida JSON con esquema) | Bloques con inicio, duración en minutos, actividad y lugar |
+| 24 / 10 | JSON · Parse JSON | Convierte la respuesta |
+| 25 / 11 | Iterator | Recorre los bloques |
+| 26 / 12 | Tools · Set variables | Une fecha y hora de inicio en la hora local |
+| 27 / 13 | HTTP · POST a Escribir | Guarda el bloque como `plan` con Chat_ID `GLOBAL`, Plan_inicio, Plan_duracion_min y Plan_ubicacion |
+
+El plan en trazos gruesos de la ruta genérica:
+
+```text
+Esto es lo que tenía planificado {{1.agente}} para ayer:
+{{ifempty(7.text; "(no hay registro del día anterior)")}}
+
+Hoy es {{3.dia_semana}}, {{3.fecha_larga}}. Este es el plan de {{1.agente}} para hoy, a grandes rasgos, en 5 a 8 puntos con su hora aproximada, coherente con su personaje, su ciudad, su época y el día de la semana.
+Responde solo con la lista numerada, un punto por línea.
+```
+
+El de la ruta del agente financiero, que excluye los eventos porque los registra la tercera ruta:
+
+```text
+Esto es lo que tenía planificado {{1.agente}} para ayer:
+{{ifempty(21.text; "(no hay registro del día anterior)")}}
+
+Hoy es {{17.dia_semana}}, {{17.fecha_larga}}. Este es el plan de tareas de {{1.agente}} para hoy, a grandes rasgos, en 3 a 5 puntos con su hora aproximada, coherente con su personaje, su trabajo, su ciudad y el día de la semana. No incluyas la agenda de eventos financieros del día: se registra aparte.
+Responde solo con la lista numerada, un punto por línea.
+```
+
+La descomposición en bloques de la ruta genérica:
+
+```text
+Plan de {{1.agente}} para hoy ({{3.dia_semana}}, {{3.fecha_larga}}), a grandes rasgos:
+{{8.result}}
+
+Descompón este plan en bloques consecutivos de una hora como máximo, desde que {{1.agente}} se levanta hasta que se acuesta. Para cada bloque indica la hora de inicio (HH:mm, formato 24 h), la duración en minutos, la actividad concreta en una frase en tercera persona y el lugar donde ocurre.
+Devuelve exclusivamente un JSON con esta forma: {"bloques": [{"inicio": "07:00", "duracion_min": 60, "actividad": "...", "ubicacion": "..."}]}
+```
+
+En la ruta del agente financiero la descomposición tiene la búsqueda de Google activada y pide que cada bloque sea una tarea de búsqueda de información concreta, orientada a valorar el mercado:
+
+```text
+Plan de {{1.agente}} para hoy ({{17.dia_semana}}, {{17.fecha_larga}}), a grandes rasgos:
+{{22.result}}
+
+Descompón este plan en bloques consecutivos de una hora como máximo, desde que {{1.agente}} se levanta hasta que se acuesta. Para cada bloque indica la hora de inicio (HH:mm, formato 24 h), la duración en minutos, la actividad concreta, especifica, mensurable y comunicble que deberia realizar el agente para la correcta valoración y aprovechamiento en cuanto a movimientos financieros del evento asociado mediante una frase en tercera persona. Dicha tarea consistirá en la busqueda concreta y especifica de información para valorar dicho momento con el fin de expresar una valoración de inversión o postura ante el mercado.
+Devuelve exclusivamente un JSON con esta forma: {"bloques": [{"inicio": "07:00", "duracion_min": 60, "actividad": "...", "ubicacion": "..."}]}
+```
+
+Las dos descomposiciones usan el mismo esquema de salida:
+
+```json
+{"type": "object", "properties": {"bloques": {"type": "array", "items": {"type": "object", "properties": {"inicio": {"type": "string"}, "duracion_min": {"type": "integer"}, "actividad": {"type": "string"}, "ubicacion": {"type": "string"}}, "required": ["inicio", "duracion_min", "actividad", "ubicacion"]}}}, "required": ["bloques"]}
+```
+
+Un bloque queda guardado como «Plan de Borja para el viernes 23/10/2026, de 14:30 a 15:30: …».
+
+La capa de eventos (módulos 100 a 109) funciona así:
+
+| # | Módulo | Qué hace |
+| --- | --- | --- |
+| 100 | Tools · Set variables | Fecha de hoy, fecha larga y día de la semana |
+| 101 | Airtable · Search records | ¿Hay ya eventos del agente con fecha de hoy? |
+| 102 | Tools · Numeric aggregator | Los cuenta |
+| 103 | Gemini con búsqueda de Google | La agenda financiera del día, una línea por evento; solo si no hay eventos de hoy |
+| 104 | Iterator | Recorre las líneas |
+| 105 | Tools · Set variables | Descarta las líneas que no empiezan por `HH:mm\|` y separa hora, evento, ámbito y fuente |
+| 106 | HTTP · POST a Escribir | Guarda el evento como `evento`, con la hora en Plan_inicio, 30 minutos de duración y el ámbito en Plan_ubicacion |
+
+```text
+Hoy es {{100.ev_dia}}, {{100.ev_fecha_larga}}. Busca la agenda de eventos financieros de hoy que seguiría un asesor financiero en Madrid: datos macroeconómicos de España, la zona euro y Estados Unidos, decisiones o comparecencias de bancos centrales, subastas de deuda relevantes y resultados empresariales del Ibex 35 y de las grandes cotizadas de Estados Unidos.
+Incluye solo eventos de hoy con hora confirmada por una fuente, con la hora convertida a la de Madrid. Entre 3 y 8 eventos, los de mayor impacto.
+Responde únicamente con una línea por evento, ordenadas por hora, con este formato exacto y sin nada más:
+HH:mm|evento en una frase|ámbito (España, Zona euro, EE. UU. o empresa)|fuente
+Si hoy no hay eventos relevantes, responde únicamente: NINGUNO
+```
+
+Responder no confunde los eventos con lo que el agente está haciendo, porque solo busca registros de tipo `plan`.
 
 Plan_inicio se escribe en ISO con el desfase de Madrid, así que Airtable guarda el instante correcto. La instrucción de sistema de Gemini es la descripción del personaje, o su nombre si no llega descripción. El escenario es secuencial: si dos llamadas piden plan a la vez, la segunda espera y, al llegar su turno, encuentra el plan escrito y no hace nada.
 
@@ -361,7 +489,7 @@ Responder genera lo que dice el agente con el prompt de diálogo del paper: qui�
 | 1 | Webhooks · Custom webhook | Entrada |
 | 9 | HTTP · POST a Resumen del agente | Resumen del agente; vacío si el modo no es ON |
 | 2 | HTTP · POST a Recuperar | El mensaje como consulta, k = 10 |
-| 12 | Data store · Get a record | Lo que el agente sabe del interlocutor (`rel|agente|chat_id`) |
+| 12 | Data store · Get a record | Lo que el agente sabe del interlocutor (`rel\|agente\|chat_id`) |
 | 3 | Airtable · Search records | Las 12 observaciones más recientes del chat |
 | 4 | Tools · Text aggregator | Una línea por observación: `- [autor] texto` |
 | 7 | Airtable · Search records | El bloque del plan que abarca este momento |
@@ -419,6 +547,29 @@ El Resumen del agente reconstruye quién es el agente a partir de su memoria con
 | ON, con caché de menos de 24 h | Devuelve el resumen guardado, estado cache | < 1 s |
 | ON, sin caché o caducada | Devuelve el resumen anterior (o vacío) y lo regenera después | < 1 s; la regeneración, unos 35 s |
 
+| # | Módulo | Qué hace |
+| --- | --- | --- |
+| 1 | Webhooks · Custom webhook | Entrada |
+| 2 | Router | Ruta OFF o ruta ON según `modo` |
+| R1 · 3 | Webhooks · Webhook response | Modo OFF: `{"resumen": "", "estado": "OFF"}` |
+| R2 · 4 | Data store · Get a record | Lee la caché `agente\|chat_id` |
+| R2 · 5 | Router | Caché vigente o caché ausente o caducada (24 h) |
+| R2 · 6 | Webhooks · Webhook response | Caché vigente: devuelve el resumen guardado, estado cache |
+| R2 · 19 | Webhooks · Webhook response | Sin caché: devuelve el resumen anterior o vacío, estado regenerando |
+| R2 · 10, 12, 14 | HTTP · POST a Recuperar | Las tres consultas del paper, k = 15 cada una |
+| R2 · 11, 13, 15 | Gemini | Resume cada consulta |
+| R2 · 16 | Tools · Set variables | Une los tres apartados con la hora de actualización |
+| R2 · 18 | Data store · Add a record | Guarda el resumen, salvo que los tres sean «sin datos» |
+
+Las tres consultas a Recuperar son «rasgos esenciales de la personalidad de {agente}», «ocupación diaria actual de {agente}» y «cómo se siente {agente} respecto a su progreso reciente en la vida». Cada una se resume con el mismo patrón; este es el de la primera:
+
+```text
+¿Cómo describirías los rasgos esenciales de la personalidad de {{1.agente}} a partir de las siguientes afirmaciones?
+{{10.data.texto}}
+
+Responde en una o dos frases, en tercera persona y en texto plano (sin formato), sin inventar nada que no se deduzca de las afirmaciones. Si no hay afirmaciones suficientes, responde únicamente: sin datos.
+```
+
 La regeneración lanza las tres consultas contra Recuperar (k = 15) y resume cada una con Gemini en una o dos frases, o «sin datos» si no hay afirmaciones suficientes. Guarda el resultado con clave `agente|chat_id`, salvo que los tres apartados sean «sin datos»: así un chat nuevo no se queda 24 horas sin resumen. El interruptor está en el Gateway, que envía `"modo": "ON"`. Como la memoria es por chat, el agente puede verse distinto en cada conversación.
 
 ## 11. (8) Estudiar
@@ -434,6 +585,39 @@ Estudiar decide si un mensaje contiene una pregunta o un requerimiento profesion
 | 5 | Gemini con búsqueda de Google | Si ya lo sabe responde YA_SABIDO; si no, redacta hasta 60 palabras con la fuente al final |
 | 6 | HTTP · POST a Escribir | Guarda «{agente} se ha informado sobre {tema}: {texto}» como conocimiento, autor sistema |
 | 7 | HTTP · POST a Interpelar | Pasa la duda (el dato que falta), el tema y el mensaje original |
+
+El clasificador del módulo 2 es la pieza que decide casi todo:
+
+```text
+Mensaje que {{ifempty(1.usuario; "el interlocutor")}} le ha enviado a {{1.agente}}:
+«{{1.mensaje}}»
+
+Perfil de {{1.agente}}: {{ifempty(1.descripcion; "(sin descripción)")}}
+
+¿Contiene una pregunta o un requerimiento concreto sobre un tema del ámbito profesional (técnico, legal, fiscal, económico, de negocio, de una herramienta, una norma, un dato o un procedimiento) cuya respuesta exige información verificable que un profesional tendría que consultar? No cuentan los saludos, la charla, las opiniones, los asuntos personales o emocionales ni lo que se responde con sentido común.
+Si es una cuestión profesional pero falta un dato imprescindible para poder investigarla con fiabilidad (por ejemplo el país, la herramienta, la versión, el sector o el tipo de contrato) y no se deduce del mensaje, marca aclarar como true e indica en duda qué dato falta.
+Devuelve exclusivamente un JSON: {"investigar": true o false, "aclarar": true o false, "duda": "el dato que falta, o vacío", "tema": "el tema en pocas palabras", "pregunta": "la pregunta concreta, reformulada para buscarla en internet"}
+```
+
+Su esquema de salida:
+
+```json
+{"type": "object", "properties": {"investigar": {"type": "boolean"}, "tema": {"type": "string"}, "pregunta": {"type": "string"}, "aclarar": {"type": "boolean"}, "duda": {"type": "string"}}, "required": ["investigar", "aclarar", "duda", "tema", "pregunta"]}
+```
+
+La investigación del módulo 5, con la búsqueda de Google activada:
+
+```text
+{{1.agente}} necesita saber esto para su trabajo: {{3.pregunta}}
+
+Lo que ya recuerda al respecto:
+{{ifempty(4.data.texto; "(nada)")}}
+
+Si lo que ya recuerda responde la pregunta de forma suficiente, responde exactamente YA_SABIDO y nada más.
+Si no, investiga con búsquedas en internet y redacta una pieza de conocimiento muy pragmática, de 60 palabras como máximo, en texto plano: la respuesta concreta, el dato o el procedimiento clave y, si aplica, la cifra, el plazo o la condición que importa. Sin introducción, sin opiniones y sin relleno. Termina con «(Fuente: nombre del sitio)». Si las fuentes no permiten una respuesta fiable, dilo en una sola frase.
+```
+
+El filtro del módulo 6 descarta la respuesta YA_SABIDO, así que solo se guarda conocimiento nuevo.
 
 No cuentan los saludos, la charla, las opiniones, los asuntos personales ni lo que se responde con sentido común. Falta un dato cuando la cuestión es profesional pero no se puede investigar con fiabilidad sin saber, por ejemplo, el país, la herramienta, la versión, el sector o el tipo de contrato. La respuesta del momento no usa la investigación; la usan los mensajes siguientes, a través de Recuperar.
 
@@ -451,6 +635,16 @@ Interpelar escribe al usuario por iniciativa propia, en el personaje del agente,
 | 5 | Telegram Bot · Send a Text Message | La envía al chat |
 | 6 | HTTP · POST a Escribir | Guarda «{agente} le planteó una duda a {usuario}: «{pregunta}»» como observación del agente |
 
+La pregunta se redacta con este prompt, con la descripción del personaje como instrucción de sistema:
+
+```text
+{{1.agente}} tiene una duda que necesita aclarar con {{ifempty(1.usuario; "su interlocutor")}} antes de seguir.
+Qué necesita saber: {{1.motivo}}
+Contexto: {{ifempty(1.contexto; "(sin contexto adicional)")}}
+
+Escribe el mensaje de Telegram que {{1.agente}} le enviaría por iniciativa propia: una sola pregunta concreta y breve que permita resolver la duda, en su personaje y en texto plano. Escribe únicamente el mensaje, sin comillas ni prefijos.
+```
+
 Los dos límites evitan que el agente encadene preguntas, también en un día con muchos eventos. La pregunta queda en el historial: cuando el usuario contesta, Responder la ve en la conversación reciente y Estudiar recibe la respuesta como un mensaje nuevo que ya puede investigar.
 
 ## 13. (10) Despertador
@@ -459,7 +653,7 @@ El Despertador lanza la planificación todos los días a las 5:00, hora de Madri
 
 | # | Módulo | Qué hace |
 | --- | --- | --- |
-| 1 | Data store · Get a record | Lee `perfil|<agente>` |
+| 1 | Data store · Get a record | Lee `perfil\|<agente>` |
 | 2 | HTTP · POST a Planificar | Si el perfil existe, envía agente y descripción |
 
 Planificar lanza a la vez las rutas de tareas y de eventos, y ninguna duplica nada si después llega un mensaje, porque las dos comprueban si ya hay registros de hoy.
@@ -476,11 +670,32 @@ Percibir es el bucle percibir-reaccionar del paper adaptado a un agente sin mund
 | 4 | Airtable · Search records | Todos los chats en los que algún usuario ha escrito al agente |
 | 5 | Tools · Text aggregator | Lista de chats, uno por línea |
 | 6 | Iterator | Recorre los chats sin duplicados |
-| 7 | Data store · Get a record | La cartera del chat, clave `agente|chat_id` |
+| 7 | Data store · Get a record | La cartera del chat, clave `agente\|chat_id` |
 | 8 | Gemini (salida JSON con esquema) | Con cartera: la implicación para cada posición afectada y la duda si falta un dato. Sin cartera: un comentario general para un inversor particular, sin duda |
 | 9 | JSON · Parse JSON | Separa conocimiento y duda |
 | 10 | HTTP · POST a Escribir | Guarda el conocimiento en ese chat |
 | 11 | HTTP · POST a Interpelar | Solo si hay duda |
+
+La investigación del resultado, en el módulo 3, con la búsqueda de Google activada:
+
+```text
+Evento financiero previsto para hoy: {{2.Memoria}}
+
+Busca el resultado de este evento: el dato publicado, la decisión tomada o las cifras presentadas, y la reacción inmediata del mercado si la hay. Si todavía no se ha publicado, responde únicamente: NO_PUBLICADO
+Si se ha publicado, responde en un máximo de 60 palabras, con las cifras exactas, y termina con la fuente entre paréntesis.
+```
+
+La implicación para cada chat, en el módulo 8, con salida JSON (`conocimiento` y `duda`):
+
+```text
+Evento: {{2.Memoria}}
+Resultado: {{3.result}}
+
+Cartera e intereses de su interlocutor: {{ifempty(7.cartera; "NO HAY CARTERA REGISTRADA")}}
+
+Si hay cartera registrada, redacta en tercera persona y en un máximo de 60 palabras qué implica este resultado para esa cartera en concreto (qué posiciones o intereses se ven afectados, en qué sentido y con qué intensidad), manteniendo la fuente; si ninguna posición se ve afectada, dilo en una frase. Si no hay cartera registrada, redacta un comentario genérico de {{1.agente}} sobre qué implica este resultado para un inversor particular, en un máximo de 60 palabras y con la fuente.
+En duda, formula en una frase el dato que a {{1.agente}} le falta y que solo su interlocutor puede darle para valorar el impacto (por ejemplo, si mantiene una posición o su horizonte); si no le falta nada o no hay cartera, deja duda vacía.
+```
 
 El resultado del evento se investiga una vez y la implicación se calcula para cada chat. Lo aprendido se guarda en cada chat porque Responder solo busca en la memoria de la conversación en curso.
 
@@ -607,7 +822,7 @@ El volumen total lo limita el plan de Airtable: 1.000 registros por base en Free
 
 ### Errores
 
-Make desactiva un escenario secuencial en cuanto una ejecución falla, y uno en paralelo tras varios errores seguidos. Gateway, Planificar, Estudiar, Interpelar, Despertador y Percibir llevan un manejador Ignore en todos los módulos que pueden fallar. Escribir, Reflexionar, Recuperar, Responder y el Resumen del agente no lo llevan, con estas consecuencias:
+Make desactiva un escenario secuencial en cuanto una ejecución falla, y uno en paralelo tras varios errores seguidos. Gateway, Planificar, Estudiar, Interpelar y Percibir llevan un manejador Ignore en todos los módulos que pueden fallar, y el Despertador en su llamada a Planificar. Escribir, Reflexionar, Recuperar, Responder y el Resumen del agente no lo llevan, con estas consecuencias:
 
 1. Si Gemini o Airtable fallan durante Responder, el usuario no recibe respuesta; el Gateway sigue activo.
 2. Si Gemini devuelve la importancia con texto alrededor («Puntuación: 7»), la conversión de Airtable puede fallar y ese recuerdo se pierde.
