@@ -1,4 +1,4 @@
-# Human_proxy · Documentación técnica
+# Documentación técnica
 
 Human_proxy implementa en Make.com la arquitectura de *Generative Agents: Interactive Simulacra of Human Behavior* (Park et al., 2023, [arXiv 2304.03442](https://arxiv.org/abs/2304.03442)) para agentes que conversan por Telegram. La iniciativa de los agentes sigue la programación orientada a agentes de Shoham (*Agent-oriented programming*, Artificial Intelligence 60, 1993).
 
