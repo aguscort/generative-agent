@@ -1,4 +1,4 @@
-# Generative Agent
+# Human_proxy
 
 Human_proxy es un bot de Telegram para conversar con Borja, un asesor financiero ficticio del Madrid de los 90. Recuerda lo que le cuentas, se forma una opinión sobre ti y sobre sí mismo, sigue la actualidad financiera y cumple lo que acepta hacer. No hay comandos: se le escribe con naturalidad, y cada conversación tiene su propia memoria.
 
@@ -21,6 +21,30 @@ Por debajo implementa en Make.com la memoria, la recuperación y la reflexión d
 **Estudia.** Ante una pregunta profesional que no sabe responder, investiga en la web y guarda lo aprendido.
 
 La documentación técnica, con cada escenario, sus prompts y sus costes, está en [DOCUMENTACION.md](DOCUMENTACION.md).
+
+## Memoria
+
+**Objetivo.** Que el agente recuerde lo que vive y se comporte de forma coherente con ello a lo largo del tiempo, como en *Generative Agents*.
+
+**Funcionamiento.** Todo entra en la memoria por un único escenario, (2) Escribir: los mensajes del usuario, las respuestas del agente, sus reflexiones y lo que aprende. Cada recuerdo se guarda en Airtable con su importancia, de 1 a 10, puntuada por Gemini, y con su vector, y pertenece a un agente y a una conversación. (4) Recuperar devuelve, para una consulta, los recuerdos con mejor puntuación combinada de recencia, importancia y relevancia; la calcula código, no el modelo. Cuando la importancia acumulada de las observaciones sin reflejar supera 150, (3) Reflexionar formula preguntas sobre los recuerdos recientes, recupera las evidencias de cada una y guarda cinco conclusiones que citan los recuerdos en que se apoyan. Las conclusiones son también recuerdos: se recuperan y alimentan reflexiones posteriores. (7) Resumen del agente reconstruye quién es el agente a partir de su memoria.
+
+## Planificación
+
+**Objetivo.** Decidir qué hará el agente y cuándo, comprometiéndose solo a lo que sabe hacer. Sigue el modelo de compromisos de Shoham; el plan diario de *Generative Agents* se abandonó.
+
+**Funcionamiento.** Planificar es comprometerse. Un compromiso es la obligación de hacer algo en un momento dado, ante un usuario o ante sí mismo; en el segundo caso es una decisión. Los compromisos nacen de tres fuentes. De lo que pide el usuario: antes de contestar, (6) Responder clasifica cada mensaje como petición (REQUEST), liberación (UNREQUEST) o ninguna de las dos, y en los dos primeros casos consulta a (14) Comprometer. De las reflexiones: si una conclusión exige actuar, (3) Reflexionar envía una decisión a Comprometer. Y de reglas fijas: (10) Despertador ordena cada laborable preparar la agenda, y la agenda ordena estudiar cada evento.
+
+Comprometer decide con reglas deterministas. Acepta solo lo que el agente sabe hacer, con destinatario si es un mensaje, sin duplicar otro compromiso, sin contradecir un veto del usuario, sin cadenas de compromisos demasiado largas y con menos de 30 pendientes. Ajusta el momento al horario de trabajo, laborables de 8:00 a 20:30, y fija hasta cuándo vale. Su respuesta es aceptado, rechazado con el motivo, liberado o nada, y Borja contesta ateniéndose a ella: no promete lo que no se ha aceptado. Los compromisos se guardan en el almacén Compromisos con su estado y nunca se borran.
+
+## Ejecución (en desarrollo)
+
+**Objetivo.** Llevar a cabo los compromisos y comprobar que se han logrado antes de darlos por cumplidos, de modo que un compromiso pueda pedir cualquier cosa que el agente sepa resolver con sus herramientas.
+
+**Estado.** En desarrollo. Mientras tanto, (11) Cumplir ejecuta cada media hora, en horario de trabajo, los compromisos vencidos con seis acciones fijas: agendar, estudiar, informar, preguntar, investigar y cotizar. Reserva cada compromiso antes de actuar y lo marca como cumplido al terminar. Tras tres fallos lo marca como fallido y, pasada su fecha de fin, como caducado; en ambos casos avisa al usuario si se lo había prometido.
+
+**Funcionamiento previsto.** Sigue el patrón actuar, observar y refinar, con tres escenarios nuevos. Cumplir queda como reloj y pasa cada compromiso vencido a (15) Actuar; agendar y estudiar, que son rutinas, conservan sus rutas. Actuar elige un solo paso a partir del compromiso, de su criterio de cumplimiento y de lo hecho hasta entonces, y lo ejecuta con una de sus herramientas: cotizar, recordar, preguntar, buscar, calcular, consultar la cartera o enviar un mensaje. (16) Observar comprueba sin modelo que la herramienta devolvió lo que debía y, después, con Gemini, si se cumple el criterio. Si se cumple, cierra el compromiso; si faltan pasos, vuelve a Actuar; si su condición aún no se da, lo aplaza; si algo ha fallado, pasa a (17) Refinar, que corrige el paso, aplaza el compromiso o lo da por fallido. Cada ejecución admite como mucho 5 pasos y 2 correcciones. Los mensajes van solo al destinatario del compromiso y respetan sus vetos, y ningún paso crea compromisos ni decide qué se guarda en la memoria.
+
+Con este cambio, cada compromiso llevará su criterio de cumplimiento y su contenido será libre: Comprometer rechazará lo que no pueda resolverse con esas herramientas.
 
 ## Escenarios
 
