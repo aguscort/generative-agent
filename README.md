@@ -1,7 +1,16 @@
-# Generative Agent
-Se trata de desarrollar un bot de Telegram para conversar con **Borja**, un asesor financiero. Recuerda lo que le cuentas, se forma una opinión sobre ti y sobre sí mismo, sigue la actualidad financiera y cumple lo que acepta hacer. No hay comandos: se le escribe con naturalidad, y cada conversación tiene su propia memoria.
+# Human_proxy
 
-Por debajo, implementa en Make.com la memoria, la recuperación y la reflexión de *Generative Agents* (Park et al., 2023, [arXiv 2304.03442](https://arxiv.org/abs/2304.03442)). Su iniciativa sigue la programación orientada a agentes de Shoham (*Agent-oriented programming*, Artificial Intelligence 60, 1993): el agente tiene compromisos, cada uno con su momento, y los cumple cuando vencen. La memoria vive en Airtable y el lenguaje lo pone Gemini.
+Human_proxy es un bot de Telegram para conversar con **Borja**, un asesor financiero ficticio del Madrid de los 90. Borja recuerda lo que le cuentas, se forma una opinión sobre ti con el tiempo, sigue la actualidad financiera y cumple lo que acepta hacer. No hay comandos: se le escribe con naturalidad, y cada conversación tiene su propia memoria.
+
+Está construido en Make.com sobre tres ideas, cada una tomada de un trabajo de investigación:
+
+| Parte | Pregunta que resuelve | Se basa en |
+| --- | --- | --- |
+| [Memoria](#memoria) | ¿Qué sabe Borja y qué recuerda en cada momento? | Park *et al.* (2023), *Generative Agents* |
+| [Planificación](#planificación) | ¿A qué se compromete y cuándo? | Shoham (1993), *Agent-oriented programming* |
+| [Ejecución](#ejecución-en-desarrollo) | ¿Cómo cumple lo que ha prometido? | Shinn *et al.* (2023), *Reflexion* |
+
+La memoria vive en Airtable, los compromisos en un almacén de datos de Make y el lenguaje lo pone Gemini.
 
 > [!NOTE]
 > La documentación técnica, con cada escenario, sus prompts y sus costes, está en [DOCUMENTACION.md](DOCUMENTACION.md).
@@ -10,13 +19,15 @@ Por debajo, implementa en Make.com la memoria, la recuperación y la reflexión 
 
 | | Qué hace Borja |
 | --- | --- |
-| **Recuerda** | Guarda cada mensaje con su importancia y su vector. Antes de responder, recupera lo más relevante combinando recencia, importancia y similitud. |
-| **Reflexiona** | Cuando la importancia acumulada supera un umbral, extrae conclusiones y las guarda como recuerdos. Si una le exige actuar, se compromete consigo mismo. |
-| **Se compromete** | Si le pides algo («avísame mañana de cómo abre Inditex») o le liberas de algo («olvida lo de Inditex»), unas reglas fijas deciden si acepta, rechaza o libera, y te lo dice. Si le pides que no haga algo, anula lo que tuviera pendiente de eso. |
-| **Cumple** | Cada media hora, en su horario, ejecuta los compromisos vencidos. Nada se borra: cada compromiso termina cumplido, fallido, liberado o caducado, y si no puede cumplir algo que te prometió, te avisa. |
-| **Lee la prensa** | Dos veces al día guarda los titulares que afectan a tu cartera, con su implicación. |
-| **Lleva tu cartera, cotiza y calcula** | Apunta las posiciones que le cuentas, consulta precios en Yahoo Finance y resuelve las cuentas con código, no con el modelo. |
-| **Estudia** | Ante una pregunta profesional que no sabe responder, investiga en la web y guarda lo aprendido. |
+| **Recuerda** | Guarda cada mensaje y, antes de responder, recupera lo que viene al caso. |
+| **Reflexiona** | De vez en cuando saca conclusiones de lo vivido y las guarda como recuerdos nuevos. |
+| **Se compromete** | Si le pides algo («avísame mañana de cómo abre Inditex») o le liberas de algo («olvida lo de Inditex»), decide con reglas fijas si acepta, y te lo dice. |
+| **Cumple** | Cada media hora, en su horario, hace lo que tiene pendiente. Si no puede cumplir algo que te prometió, te avisa. |
+| **Lee la prensa** | Dos veces al día guarda los titulares que afectan a tu cartera, con lo que implican. |
+| **Lleva tu cartera, cotiza y calcula** | Apunta las posiciones que le cuentas, consulta precios en Yahoo Finance y resuelve las cuentas con código, no a ojo. |
+| **Estudia** | Si le haces una pregunta profesional que no sabe responder, investiga en la web y guarda lo aprendido. |
+
+Las tres partes trabajan juntas: lo que dices entra en la memoria y en la planificación; la planificación deja compromisos; la ejecución los cumple, y lo que hace vuelve a la memoria.
 
 ```mermaid
 flowchart LR
@@ -31,77 +42,91 @@ flowchart LR
 
 ## Memoria
 
-**Objetivo.** Que el agente recuerde lo que vive y se comporte de forma coherente con ello a lo largo del tiempo, como en *Generative Agents*.
+**Para qué sirve.** Para que Borja se comporte de forma coherente con lo que ha vivido: que no te pregunte dos veces lo mismo, que recuerde tu cartera y que su opinión sobre ti cambie con el tiempo.
 
-**Funcionamiento.**
+**La idea.** Toda la experiencia del agente se guarda en un único registro, como un diario: cada entrada es un recuerdo escrito en lenguaje natural. Lo difícil no es guardar, sino elegir qué recordar en cada momento. Para eso cada recuerdo lleva tres medidas:
 
-1. **Escribir.** Todo entra en la memoria por un único escenario, (2) Escribir: los mensajes del usuario, las respuestas del agente, sus reflexiones y lo que aprende. Cada recuerdo se guarda en Airtable con su importancia, de 1 a 10, puntuada por Gemini, y con su vector. Pertenece a un agente y a una conversación.
-2. **Recuperar.** (4) Recuperar devuelve, para una consulta, los recuerdos con mejor puntuación combinada de recencia, importancia y relevancia. La calcula código, no el modelo.
-3. **Reflexionar.** Cuando la importancia acumulada de las observaciones sin reflejar supera 150, (3) Reflexionar formula preguntas sobre los recuerdos recientes, recupera las evidencias y guarda cinco conclusiones que citan los recuerdos en que se apoyan. Las conclusiones son también recuerdos: se recuperan y alimentan reflexiones posteriores.
-4. **Resumir.** (7) Resumen del agente reconstruye quién es el agente a partir de su memoria.
+- **Recencia:** cuánto hace que se usó por última vez. Se desvanece con las horas.
+- **Importancia:** de 1 (cepillarse los dientes) a 10 (una ruptura). La puntúa Gemini al guardar el recuerdo.
+- **Relevancia:** cuánto se parece a lo que se está hablando. Se calcula con su *vector*, una representación numérica del significado que permite buscar por parecido.
+
+**Cómo funciona.**
+
+1. **Escribir.** Todo entra por un único escenario, (2) Escribir: tus mensajes, las respuestas de Borja, sus reflexiones y lo que aprende. Cada recuerdo se guarda en Airtable con su importancia y su vector.
+2. **Recuperar.** Ante una pregunta, (4) Recuperar suma las tres medidas y devuelve los recuerdos con mejor puntuación. La cuenta la hace código, no el modelo.
+3. **Reflexionar.** Cuando se acumula bastante importancia sin procesar, (3) Reflexionar se pregunta qué ha aprendido, busca los recuerdos que lo prueban y guarda cinco conclusiones que los citan. Las conclusiones son también recuerdos, así que pueden alimentar reflexiones posteriores.
+4. **Resumir.** (7) Resumen del agente reconstruye quién es Borja a partir de su memoria.
 
 **Referencia.** Park, J. S., O'Brien, J. C., Cai, C. J., Morris, M. R., Liang, P. y Bernstein, M. S. (2023). *Generative Agents: Interactive Simulacra of Human Behavior*. UIST '23. [arXiv:2304.03442](https://arxiv.org/abs/2304.03442). Apartados 4.1 (memoria y recuperación) y 4.2 (reflexión).
 
 ## Planificación
 
-**Objetivo.** Decidir qué hará el agente y cuándo, comprometiéndose solo a lo que sabe hacer. Sigue el modelo de compromisos de Shoham; el plan diario de *Generative Agents* se abandonó.
+**Para qué sirve.** Para que Borja decida qué va a hacer y cuándo, y para que solo prometa lo que sabe hacer.
 
-**Funcionamiento.** Planificar es comprometerse. Un compromiso es la obligación de hacer algo en un momento dado, ante un usuario o ante sí mismo; en el segundo caso es una decisión. Los compromisos nacen de tres fuentes:
+**La idea.** Planificar es comprometerse. Un compromiso es la obligación de hacer algo en un momento dado, ante alguien o ante uno mismo; cuando es ante uno mismo, es una decisión. «Te aviso el lunes a las 10 de cómo abre Inditex» es un compromiso con un momento, un destinatario y un contenido. Borja no improvisa promesas: unas reglas fijas deciden si acepta cada una.
+
+**De dónde salen los compromisos.**
 
 | Fuente | Cómo |
 | --- | --- |
-| **Lo que pide el usuario** | Antes de contestar, (6) Responder clasifica el mensaje como petición (REQUEST), liberación (UNREQUEST) o ninguna de las dos. Ve los compromisos pendientes con ese usuario, cada uno con su clave, y señala de cuáles le libera, cuál repite o qué veto choca con la petición. Después consulta a (14) Comprometer. |
-| **Las reflexiones** | Si una conclusión exige actuar, (3) Reflexionar envía una decisión a Comprometer. |
-| **Reglas fijas** | (10) Despertador ordena cada laborable preparar la agenda, y la agenda ordena estudiar cada evento. |
+| **Lo que pides** | Antes de contestarte, (6) Responder clasifica tu mensaje: petición, liberación o ninguna de las dos. Para hacerlo ve tus compromisos pendientes, cada uno con su clave, y señala de cuál te libera, cuál repites o qué veto choca con lo que pides. Después consulta a (14) Comprometer. |
+| **Sus reflexiones** | Si una conclusión le exige actuar, (3) Reflexionar le pide a Comprometer que se comprometa consigo mismo. |
+| **Rutinas** | Cada laborable, (10) Despertador le ordena preparar la agenda del día, y la agenda le ordena estudiar cada evento. |
 
-Comprometer decide con reglas deterministas. Acepta un compromiso solo si:
+**Las reglas.** Comprometer acepta un compromiso solo si se cumplen todas:
 
-- el agente sabe hacerlo y, si es un mensaje, tiene destinatario;
-- no repite otro compromiso ni contradice un veto;
-- no alarga demasiado la cadena de compromisos;
-- hay menos de **10 pendientes con ese usuario**, sin contar los vetos.
+1. Borja sabe hacerlo y, si es un mensaje, sabe a quién enviarlo.
+2. No repite un compromiso que ya tiene.
+3. No contradice un veto.
+4. No encadena demasiados compromisos.
+5. Hay menos de **10 pendientes con ese usuario**, sin contar los vetos.
 
-Un veto puede ser de una acción entera («no me escribas más»), de un valor («no me avises más de Inditex») o de un tema («no me preguntes por mi cartera»). Al aceptarlo, Comprometer libera lo pendiente que choca con él.
+Un **veto** es un compromiso de no hacer algo, y puede ser de tres clases:
 
-Comprometer ajusta además el momento al horario de trabajo (laborables de 8:00 a 20:30) y fija hasta cuándo vale el compromiso. Responde aceptado, rechazado con el motivo, liberado o nada, y Borja contesta ateniéndose a esa respuesta: no promete lo que no se ha aceptado. Los compromisos se guardan en el almacén Compromisos con su estado y nunca se borran.
+| Veto | Ejemplo | Qué impide |
+| --- | --- | --- |
+| De una acción | «No me escribas más» | Toda esa acción hacia ti |
+| De un valor | «No me avises más de Inditex» | Esa acción, solo para ese valor |
+| De un tema | «No me preguntes por mi cartera» | Lo que trate de ese tema |
 
-**Referencia.** Shoham, Y. (1993). *Agent-oriented programming*. Artificial Intelligence, 60(1), 51–92. [doi:10.1016/0004-3702(93)90034-9](https://doi.org/10.1016/0004-3702(93)90034-9). De ahí salen el estado mental (creencias, capacidades y compromisos), las reglas de compromiso, los actos REQUEST y UNREQUEST, la abstención (REFRAIN) y el ciclo del intérprete AGENT-0. El plan diario que se abandonó es el del apartado 4.3 de Park et al. (2023).
+Al aceptar un veto, Borja abandona lo que tuviera pendiente y choque con él.
+
+Comprometer también ajusta el momento al horario de Borja (laborables de 8:00 a 20:30) y fija hasta cuándo vale el compromiso. Su respuesta es una de cuatro (aceptado, rechazado con el motivo, liberado o nada) y Borja contesta ateniéndose a ella: no promete lo que no se ha aceptado. Los compromisos se guardan con su estado y nunca se borran.
+
+**Referencia.** Shoham, Y. (1993). *Agent-oriented programming*. Artificial Intelligence, 60(1), 51–92. [doi:10.1016/0004-3702(93)90034-9](https://doi.org/10.1016/0004-3702(93)90034-9). De ahí salen el estado mental del agente (creencias, capacidades y compromisos), las reglas de compromiso, los actos de pedir (REQUEST) y liberar (UNREQUEST), la abstención (REFRAIN) y el ciclo del intérprete AGENT-0.
 
 ## Ejecución (en desarrollo)
 
 > [!IMPORTANT]
-> **En desarrollo.** (15) Actuar, (16) Observar y (17) Refinar están creados en Make y **desactivados**. Mientras tanto, (11) Cumplir ejecuta los compromisos con acciones fijas.
+> (15) Actuar, (16) Observar y (17) Refinar están creados en Make y **desactivados**. Mientras tanto, (11) Cumplir ejecuta los compromisos con acciones fijas.
 
-**Objetivo.** Llevar a cabo los compromisos y comprobar que se han logrado antes de darlos por cumplidos, de modo que un compromiso pueda pedir cualquier cosa que el agente sepa resolver con sus herramientas.
+**Para qué sirve.** Para que Borja cumpla lo que ha prometido y compruebe que lo ha logrado antes de darlo por hecho.
 
-**Hoy.** Cada media hora, en horario de trabajo, (11) Cumplir ejecuta los compromisos vencidos con seis acciones fijas: agendar, estudiar, informar, preguntar, investigar y cotizar. Reserva cada compromiso antes de actuar y lo marca como cumplido al terminar. Tras tres fallos lo marca como fallido y, pasada su fecha de fin, como caducado; en ambos casos avisa al usuario si se lo había prometido.
+**Hoy.** Cada media hora, en horario de trabajo, (11) Cumplir toma los compromisos vencidos y ejecuta cada uno con una de seis acciones fijas: agendar, estudiar, informar, preguntar, investigar o cotizar. Antes de actuar reserva el compromiso, para no hacerlo dos veces, y al terminar lo marca como cumplido. Si falla tres veces, lo marca como fallido; si pasa su fecha de fin, como caducado. En los dos casos te avisa si te lo había prometido.
 
-**Funcionamiento previsto.** Sigue el patrón **actuar, observar y refinar**. Cumplir queda como reloj y pasa cada compromiso vencido a Actuar; agendar y estudiar, que son rutinas, conservan sus rutas.
+**La idea de la versión nueva.** En lugar de una acción fija por compromiso, Borja trabaja por pasos, como lo haría una persona: hace algo, mira el resultado y corrige si hace falta. Así un compromiso puede pedir cualquier cosa que sus herramientas resuelvan.
 
-| Escenario | Papel |
-| --- | --- |
-| **(15) Actuar** | Elige un solo paso a partir del compromiso, de su criterio de cumplimiento y de lo hecho hasta entonces. Lo ejecuta con una herramienta: cotizar, recordar, buscar, calcular, consultar la cartera, preguntar o enviar un mensaje. |
-| **(16) Observar** | Comprueba sin modelo que la herramienta devolvió lo que debía y después, con Gemini, si se cumple el criterio. Cierra el compromiso, vuelve a Actuar, lo aplaza si su condición aún no se da, o pasa a Refinar si algo ha fallado. |
-| **(17) Refinar** | Corrige el paso, aplaza el compromiso o lo da por fallido. |
+| Escenario | Papel | Ejemplo con «Mañana a las 10 dime cómo abre Inditex» |
+| --- | --- | --- |
+| **(15) Actuar** | Elige un solo paso y lo da con una herramienta: cotizar, recordar, buscar, calcular, consultar la cartera, preguntar o enviar un mensaje | Primero cotiza Inditex; después te envía el mensaje |
+| **(16) Observar** | Comprueba sin modelo que la herramienta respondió bien y luego, con Gemini, si ya se cumple el compromiso | Ve que hay precio y pide el paso siguiente; luego ve que el mensaje salió y lo cierra |
+| **(17) Refinar** | Si algo falla, decide: corregir el paso, aplazarlo o darlo por fallido | Si el símbolo no existe, ordena cotizar con el correcto |
 
-Cada ejecución admite como mucho 5 pasos y 2 correcciones. Los mensajes van solo al destinatario del compromiso y respetan sus vetos, y ningún paso crea compromisos ni decide qué se guarda en la memoria. Con este cambio, cada compromiso llevará su criterio de cumplimiento y su contenido será libre: Comprometer rechazará lo que no pueda resolverse con esas herramientas.
+Cada compromiso admite como mucho 5 pasos y 2 correcciones. Los mensajes solo van al destinatario del compromiso y respetan sus vetos, y ningún paso puede crear compromisos nuevos ni decidir qué entra en la memoria.
 
 **Pendiente antes de activarlos:**
 
-- [ ] Que Interpelar responda con lo que envía.
-- [ ] Que Cumplir pase los compromisos a Actuar.
-- [ ] Que el almacén Compromisos tenga el campo del criterio.
+- [ ] Que Interpelar responda con lo que envía, para que Observar sepa si la pregunta salió.
+- [ ] Que Cumplir pase los compromisos a Actuar en lugar de ejecutarlos él.
+- [ ] Que cada compromiso lleve un criterio de cumplimiento: qué tiene que haber pasado para darlo por hecho.
 
-El detalle está en la sección 18 de la documentación.
+**Referencia.** Shinn, N. *et al.* (2023). *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS 2023. [arXiv:2303.11366](https://arxiv.org/abs/2303.11366). Su arquitectura tiene los mismos tres papeles:
 
-**Referencias.** «Actuar, observar y refinar» no es el nombre de un paper concreto; el diseño combina estos cuatro:
-
-| Paper | Qué aporta |
+| Reflexion | Human_proxy |
 | --- | --- |
-| Yao, S. *et al.* (2023). *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR 2023. [arXiv:2210.03629](https://arxiv.org/abs/2210.03629) | Actuar: un paso con una herramienta, decidido a la vista de lo observado en los pasos anteriores |
-| Madaan, A. *et al.* (2023). *Self-Refine: Iterative Refinement with Self-Feedback*. NeurIPS 2023. [arXiv:2303.17651](https://arxiv.org/abs/2303.17651) | El bucle de evaluar y corregir hasta cumplir un criterio |
-| Shinn, N. *et al.* (2023). *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS 2023. [arXiv:2303.11366](https://arxiv.org/abs/2303.11366) | Refinar: convertir el fallo en una instrucción para el intento siguiente |
-| Huang, J. *et al.* (2024). *Large Language Models Cannot Self-Correct Reasoning Yet*. ICLR 2024. [arXiv:2310.01798](https://arxiv.org/abs/2310.01798) | Por qué Observar comprueba primero sin modelo: sin una señal externa, el modelo apenas se corrige a sí mismo |
+| Actor: da los pasos | (15) Actuar |
+| Evaluador: juzga el resultado | (16) Observar |
+| Autorreflexión: convierte el fallo en una instrucción para el intento siguiente | (17) Refinar |
 
 ## Escenarios
 
@@ -122,9 +147,9 @@ El detalle está en la sección 18 de la documentación.
 | `blueprints/13_cotizar.blueprint.json` | (13) Cotizar | Webhook |
 | `blueprints/14_comprometer.blueprint.json` | (14) Comprometer | Webhook |
 
-Planificar y la versión anterior de Percibir siguen en Make, desactivados, con el prefijo «[OBSOLETO]». No hacen falta. Cumplir se llamaba Percibir hasta noviembre de 2026.
+Planificar y la versión anterior de Percibir siguen en Make, desactivados y con el prefijo «[OBSOLETO]». No hacen falta para que el sistema funcione.
 
-Cada blueprint lleva notas de Make en sus webhooks y en sus llamadas, con el origen y el destino.
+Cada blueprint lleva notas de Make en sus webhooks y en sus llamadas, con el origen y el destino de cada una.
 
 ## Requisitos
 
@@ -144,7 +169,7 @@ Las cotizaciones y la prensa no necesitan clave.
    - **Caché:** agente, chat_id, resumen y actualizado. Guarda en ella el registro `perfil|<agente>` con la descripción del personaje.
    - **Cartera:** agente, chat_id, cartera, posiciones y actualizado.
    - **Compromisos:** los quince campos de la sección 17, incluidos `estado` y `fin`.
-3. Importa los blueprints. Crea primero todos los webhooks y después rellena las llamadas: hay dependencias circulares (Escribir llama a Reflexionar y Reflexionar a Escribir).
+3. Importa los blueprints. Crea primero todos los webhooks y después rellena las llamadas, porque hay dependencias circulares: Escribir llama a Reflexionar y Reflexionar a Escribir.
 4. Elige un token secreto y ponlo en lugar de `<TOKEN>`, en los filtros «Token correcto» y en los cuerpos de las llamadas. Es el mismo en todos.
 5. Sustituye el resto de marcadores (tabla siguiente). Las notas de cada webhook dicen qué módulos lo llaman.
 6. Elige en cada módulo las conexiones y los almacenes de datos, que llegan vacíos.

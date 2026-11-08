@@ -45,7 +45,7 @@ El repositorio incluye un agente de ejemplo, Borja: un asesor financiero fictici
 | (16) Observar | Webhook · desactivado | *En desarrollo.* Comprueba el paso y decide si el compromiso se ha cumplido |
 | (17) Refinar | Webhook · desactivado | *En desarrollo.* Corrige, aplaza o da por fallido un compromiso que no sale |
 
-Los números son los de esta documentación. En Make los escenarios llevan otra numeración y una etiqueta de grupo:
+Los números entre paréntesis son los de esta documentación. En Make, cada escenario lleva además una etiqueta de grupo y su propia numeración:
 
 | Documentación | Nombre en Make |
 | --- | --- |
@@ -181,10 +181,7 @@ Cada escenario lleva notas de Make en sus webhooks y en sus llamadas, con el ori
 | (16) Observar | Actuar 34 |
 | (17) Refinar | Observar 6, 13 y 16 |
 
-Responder 51 y Reflexionar 31 no llevan el token escrito: reenvían el que recibió su propio webhook, `{{1.token}}`. Actuar, Observar y Refinar hacen lo mismo en todas sus llamadas.
-
-> [!NOTE]
-> Actuar llama además a Cotizar, Recuperar, Interpelar y Escribir, y Observar a Escribir. No figuran en la tabla porque los tres están desactivados.
+Responder 51 y Reflexionar 31 no llevan el token escrito: reenvían el que recibió su propio webhook, `{{1.token}}`. Actuar, Observar y Refinar hacen lo mismo en todas sus llamadas, incluidas las que hacen a Cotizar (Actuar 10), Recuperar (Actuar 12), Interpelar (Actuar 23) y Escribir (Actuar 31 y Observar 11).
 
 ## 3. Modelo de datos
 
@@ -294,7 +291,7 @@ Escribir es la única puerta de entrada a la memoria: toda observación, reflexi
 | 7 | Tools · Numeric aggregator | Suma su importancia |
 | 8 | HTTP · POST a Reflexionar | Solo si la suma supera 150 y el recuerdo nuevo es una observación |
 
-Hasta noviembre de 2026, Escribir también detectaba promesas en cada recuerdo y las enviaba a Comprometer. Esa regla desapareció: veía solo la frase del agente, sin el mensaje que la motivó, y reaccionaba también a recuerdos del sistema. Ahora los compromisos se deciden donde está el contexto: en Responder y en Reflexionar.
+Escribir no decide compromisos. Eso ocurre donde está el contexto completo: en Responder, que ve tu mensaje y la conversación (sección 9), y en Reflexionar, que ve las conclusiones (sección 6).
 
 ### Importancia
 
@@ -319,7 +316,7 @@ El filtro del módulo 8 exige dos condiciones: suma mayor que 150 y tipo observa
 
 ### Entrada y salida
 
-Entrada: `token`, `memoria` (obligatorio), `tipo`, `agente`, `chat_id`, `autor` y, opcionales, `evidencias` (IDs de registro) y `nivel`, que se acepta pero ya no se usa. Los campos `plan_ubicacion`, `plan_inicio` y `plan_duracion_min` se siguen aceptando, aunque ya nadie los envía. Salida: `{"id": "rec…", "importancia": "4", "tipo": "observacion"}`.
+Entrada: `token`, `memoria` (obligatorio), `tipo`, `agente`, `chat_id`, `autor` y, opcionales, `evidencias` (IDs de registro) y `nivel`. `nivel`, `plan_ubicacion`, `plan_inicio` y `plan_duracion_min` se aceptan, pero no se usan. Salida: `{"id": "rec…", "importancia": "4", "tipo": "observacion"}`.
 
 ## 6. (3) Memoria: Reflexionar
 
@@ -894,7 +891,7 @@ La clave fija por día evita duplicados si el escenario se ejecuta dos veces. Es
 
 ## 14. (11) Cumplir: ejecución de compromisos
 
-Cumplir es la segunda fase del ciclo de AGENT-0: a intervalos fijos, ejecuta lo que el agente se ha comprometido a hacer y ya ha vencido. Se llamó Percibir hasta noviembre de 2026; el nombre cambió porque no percibe nada, solo ejecuta. La percepción está en Responder (sección 9).
+Cumplir es la segunda fase del ciclo de AGENT-0: a intervalos fijos, ejecuta lo que el agente se ha comprometido a hacer y ya ha vencido. No percibe nada: la percepción está en Responder (sección 9).
 
 > [!IMPORTANT]
 > Cumplir quedará como reloj cuando se active la ejecución por pasos de la [sección 18](#18-ejecución-en-desarrollo-15-actuar-16-observar-y-17-refinar). Hasta entonces ejecuta los compromisos con las acciones fijas que se describen aquí.
@@ -1142,7 +1139,7 @@ Comprometer aplica las reglas de compromiso. Siempre responde con la decisión, 
 4. Cotizar tiene símbolos.
 5. El nivel es 2 o menos.
 6. No repite un compromiso vigente: ni uno con la misma acción, destinatario, contenido y primer valor, ni el que Percibir señala como repetido.
-7. Ningún veto vigente lo impide (ver la tabla de vetos más abajo).
+7. Ningún veto vigente lo impide: ni uno de la acción entera para ese chat, ni uno del mismo valor, ni el que Percibir señala por tema.
 8. Hay menos de **10 compromisos pendientes con ese chat**, sin contar los vetos. Un veto nunca se rechaza por este motivo.
 
 **Vetos.** Solo se vetan informar y preguntar, las acciones que llegan al usuario.
@@ -1185,7 +1182,7 @@ Los motivos de rechazo, en este orden: no sabe hacer eso o no le corresponde; no
 > [!IMPORTANT]
 > Los tres escenarios están creados en Make y **desactivados**. Hasta que se activen, Cumplir sigue ejecutando con sus acciones fijas ([sección 14](#14-11-cumplir-ejecución-de-compromisos)).
 
-La ejecución nueva sigue el patrón **actuar, observar y refinar**. En lugar de una ruta fija por acción, el agente cumple cada compromiso paso a paso con sus herramientas y no lo da por cumplido hasta comprobarlo. Así, un compromiso puede pedir cualquier cosa que esas herramientas resuelvan. El diseño combina ReAct, Self-Refine, Reflexion y el estudio de Huang *et al.* sobre la autocorrección ([sección 24](#24-referencias)).
+La ejecución nueva sigue el patrón **actuar, observar y refinar**. En lugar de una ruta fija por acción, el agente cumple cada compromiso paso a paso con sus herramientas y no lo da por cumplido hasta comprobarlo. Así, un compromiso puede pedir cualquier cosa que esas herramientas resuelvan. Sigue la arquitectura de Reflexion: un actor (Actuar), un evaluador (Observar) y una autorreflexión (Refinar) ([sección 24](#24-referencias)).
 
 ```mermaid
 flowchart LR
@@ -1444,7 +1441,7 @@ Se aparta en tres cosas:
 
 ## 21. Costes
 
-Con un usuario, el sistema gasta unos 3.400–3.900 créditos de Make al mes antes de que nadie converse, según una estimación hecha con los créditos medidos de cada pieza: Cumplir (≈ 550 en vueltas sin nada que hacer, ≈ 480 en la agenda diaria y ≈ 1.600 en el estudio de eventos), Noticias (≈ 750–1.250) y el Despertador (≈ 60). Hasta noviembre de 2026, con el plan diario, Percibir cada hora y Noticias cuatro veces al día, eran unos 6.400–7.400. En el coste manda Make, no Gemini: los créditos son el 85–90 % de cada ejecución.
+Con un usuario, el sistema gasta unos 3.400–3.900 créditos de Make al mes antes de que nadie converse, según una estimación hecha con los créditos medidos de cada pieza: Cumplir (≈ 550 en vueltas sin nada que hacer, ≈ 480 en la agenda diaria y ≈ 1.600 en el estudio de eventos), Noticias (≈ 750–1.250) y el Despertador (≈ 60). En el coste manda Make, no Gemini: los créditos son el 85–90 % de cada ejecución.
 
 Precios aplicados: Make Core, 10.000 créditos por 10,59 $ al mes (0,00106 $ por crédito; 0,0009 $ en anual); Gemini 3.8 Flash, 0,75 $ por millón de tokens de entrada y 3,75 $ por millón de salida, razonamiento incluido, hasta el 31 de diciembre de 2026 y el doble desde el 1 de enero de 2027; búsqueda de Google gratis hasta 5.000 consultas al mes. Conversión a euros al cambio del Banco de España del 19 de octubre de 2026, 1,1225 $ por euro. Los créditos se midieron en el historial de cada escenario; los tokens, en el inspector de Make para Responder, Escribir y Estudiar, y el resto se estima por el tamaño del prompt.
 
@@ -1625,14 +1622,10 @@ Borrar filas de Memory Stream es seguro: no hay contadores derivados salvo Refle
 | 9. Responder | Park *et al.* (2023) y Shoham (1993) | El diálogo con memoria y resumen del interlocutor, del primero; la clasificación de actos de habla en Percibir, del segundo |
 | 10. Resumen del agente | Park *et al.* (2023) | Las tres consultas sobre el propio agente |
 | 13. Despertador, 14. Cumplir y 17. Comprometer | Shoham (1993) | Estado mental, reglas de compromiso, actos REQUEST y UNREQUEST, abstención (REFRAIN) y ciclo del intérprete AGENT-0 |
-| 18. Ejecución en desarrollo | Yao *et al.* (2023), Madaan *et al.* (2023), Shinn *et al.* (2023) y Huang *et al.* (2024) | El paso con herramienta, el bucle de evaluar y corregir, la corrección verbal y la comprobación sin modelo |
+| 18. Ejecución en desarrollo | Shinn *et al.* (2023) | Los tres papeles del bucle: actor (Actuar), evaluador (Observar) y autorreflexión (Refinar) |
 | 20. Fidelidad al paper | Park *et al.* (2023) y Shoham (1993) | La comparación entre el diseño de cada paper y su implementación |
-
-> [!NOTE]
-> «Actuar, observar y refinar» no es el nombre de un paper concreto. La sección 18 combina los cuatro trabajos de la tabla.
-
 ### Bibliografía
 
 1. Park, J. S., O'Brien, J. C., Cai, C. J., Morris, M. R., Liang, P. y Bernstein, M. S. (2023). *Generative Agents: Interactive Simulacra of Human Behavior*. En *UIST '23: Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology*. [arXiv:2304.03442](https://arxiv.org/abs/2304.03442).
 2. Shoham, Y. (1993). *Agent-oriented programming*. *Artificial Intelligence*, 60(1), 51–92. [doi:10.1016/0004-3702(93)90034-9](https://doi.org/10.1016/0004-3702(93)90034-9).
-5. Shinn, N., Cassano, F., Gopinath, A., Narasimhan, K. y Yao, S. (2023). *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS 2023. [arXiv:2303.11366](https://arxiv.org/abs/2303.11366).
+3. Shinn, N. *et al.* (2023). *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS 2023. [arXiv:2303.11366](https://arxiv.org/abs/2303.11366).
