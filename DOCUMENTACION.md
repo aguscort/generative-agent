@@ -1635,7 +1635,4 @@ Borrar filas de Memory Stream es seguro: no hay contadores derivados salvo Refle
 
 1. Park, J. S., O'Brien, J. C., Cai, C. J., Morris, M. R., Liang, P. y Bernstein, M. S. (2023). *Generative Agents: Interactive Simulacra of Human Behavior*. En *UIST '23: Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology*. [arXiv:2304.03442](https://arxiv.org/abs/2304.03442).
 2. Shoham, Y. (1993). *Agent-oriented programming*. *Artificial Intelligence*, 60(1), 51–92. [doi:10.1016/0004-3702(93)90034-9](https://doi.org/10.1016/0004-3702(93)90034-9).
-3. Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K. y Cao, Y. (2023). *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR 2023. [arXiv:2210.03629](https://arxiv.org/abs/2210.03629).
-4. Madaan, A. *et al.* (2023). *Self-Refine: Iterative Refinement with Self-Feedback*. NeurIPS 2023. [arXiv:2303.17651](https://arxiv.org/abs/2303.17651).
 5. Shinn, N., Cassano, F., Gopinath, A., Narasimhan, K. y Yao, S. (2023). *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS 2023. [arXiv:2303.11366](https://arxiv.org/abs/2303.11366).
-6. Huang, J., Chen, X., Mishra, S., Zheng, H. S., Yu, A. W., Song, X. y Zhou, D. (2024). *Large Language Models Cannot Self-Correct Reasoning Yet*. ICLR 2024. [arXiv:2310.01798](https://arxiv.org/abs/2310.01798).
