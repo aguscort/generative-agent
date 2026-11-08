@@ -1,6 +1,5 @@
-# Human_proxy
-
-Human_proxy es un bot de Telegram para conversar con **Borja**, un asesor financiero ficticio del Madrid de los 90. Recuerda lo que le cuentas, se forma una opinión sobre ti y sobre sí mismo, sigue la actualidad financiera y cumple lo que acepta hacer. No hay comandos: se le escribe con naturalidad, y cada conversación tiene su propia memoria.
+# Generative Agent
+Se trata de desarrollar un bot de Telegram para conversar con **Borja**, un asesor financiero. Recuerda lo que le cuentas, se forma una opinión sobre ti y sobre sí mismo, sigue la actualidad financiera y cumple lo que acepta hacer. No hay comandos: se le escribe con naturalidad, y cada conversación tiene su propia memoria.
 
 Por debajo, implementa en Make.com la memoria, la recuperación y la reflexión de *Generative Agents* (Park et al., 2023, [arXiv 2304.03442](https://arxiv.org/abs/2304.03442)). Su iniciativa sigue la programación orientada a agentes de Shoham (*Agent-oriented programming*, Artificial Intelligence 60, 1993): el agente tiene compromisos, cada uno con su momento, y los cumple cuando vencen. La memoria vive en Airtable y el lenguaje lo pone Gemini.
 
