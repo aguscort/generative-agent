@@ -41,6 +41,8 @@ flowchart LR
 3. **Reflexionar.** Cuando la importancia acumulada de las observaciones sin reflejar supera 150, (3) Reflexionar formula preguntas sobre los recuerdos recientes, recupera las evidencias y guarda cinco conclusiones que citan los recuerdos en que se apoyan. Las conclusiones son también recuerdos: se recuperan y alimentan reflexiones posteriores.
 4. **Resumir.** (7) Resumen del agente reconstruye quién es el agente a partir de su memoria.
 
+**Referencia.** Park, J. S., O'Brien, J. C., Cai, C. J., Morris, M. R., Liang, P. y Bernstein, M. S. (2023). *Generative Agents: Interactive Simulacra of Human Behavior*. UIST '23. [arXiv:2304.03442](https://arxiv.org/abs/2304.03442). Apartados 4.1 (memoria y recuperación) y 4.2 (reflexión).
+
 ## Planificación
 
 **Objetivo.** Decidir qué hará el agente y cuándo, comprometiéndose solo a lo que sabe hacer. Sigue el modelo de compromisos de Shoham; el plan diario de *Generative Agents* se abandonó.
@@ -63,6 +65,8 @@ Comprometer decide con reglas deterministas. Acepta un compromiso solo si:
 Un veto puede ser de una acción entera («no me escribas más»), de un valor («no me avises más de Inditex») o de un tema («no me preguntes por mi cartera»). Al aceptarlo, Comprometer libera lo pendiente que choca con él.
 
 Comprometer ajusta además el momento al horario de trabajo (laborables de 8:00 a 20:30) y fija hasta cuándo vale el compromiso. Responde aceptado, rechazado con el motivo, liberado o nada, y Borja contesta ateniéndose a esa respuesta: no promete lo que no se ha aceptado. Los compromisos se guardan en el almacén Compromisos con su estado y nunca se borran.
+
+**Referencia.** Shoham, Y. (1993). *Agent-oriented programming*. Artificial Intelligence, 60(1), 51–92. [doi:10.1016/0004-3702(93)90034-9](https://doi.org/10.1016/0004-3702(93)90034-9). De ahí salen el estado mental (creencias, capacidades y compromisos), las reglas de compromiso, los actos REQUEST y UNREQUEST, la abstención (REFRAIN) y el ciclo del intérprete AGENT-0. El plan diario que se abandonó es el del apartado 4.3 de Park et al. (2023).
 
 ## Ejecución (en desarrollo)
 
@@ -90,6 +94,15 @@ Cada ejecución admite como mucho 5 pasos y 2 correcciones. Los mensajes van sol
 - [ ] Que el almacén Compromisos tenga el campo del criterio.
 
 El detalle está en la sección 18 de la documentación.
+
+**Referencias.** «Actuar, observar y refinar» no es el nombre de un paper concreto; el diseño combina estos cuatro:
+
+| Paper | Qué aporta |
+| --- | --- |
+| Yao, S. *et al.* (2023). *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR 2023. [arXiv:2210.03629](https://arxiv.org/abs/2210.03629) | Actuar: un paso con una herramienta, decidido a la vista de lo observado en los pasos anteriores |
+| Madaan, A. *et al.* (2023). *Self-Refine: Iterative Refinement with Self-Feedback*. NeurIPS 2023. [arXiv:2303.17651](https://arxiv.org/abs/2303.17651) | El bucle de evaluar y corregir hasta cumplir un criterio |
+| Shinn, N. *et al.* (2023). *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS 2023. [arXiv:2303.11366](https://arxiv.org/abs/2303.11366) | Refinar: convertir el fallo en una instrucción para el intento siguiente |
+| Huang, J. *et al.* (2024). *Large Language Models Cannot Self-Correct Reasoning Yet*. ICLR 2024. [arXiv:2310.01798](https://arxiv.org/abs/2310.01798) | Por qué Observar comprueba primero sin modelo: sin una señal externa, el modelo apenas se corrige a sí mismo |
 
 ## Escenarios
 

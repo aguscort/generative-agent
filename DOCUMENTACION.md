@@ -1185,7 +1185,7 @@ Los motivos de rechazo, en este orden: no sabe hacer eso o no le corresponde; no
 > [!IMPORTANT]
 > Los tres escenarios están creados en Make y **desactivados**. Hasta que se activen, Cumplir sigue ejecutando con sus acciones fijas ([sección 14](#14-11-cumplir-ejecución-de-compromisos)).
 
-La ejecución nueva sigue el patrón **actuar, observar y refinar**. En lugar de una ruta fija por acción, el agente cumple cada compromiso paso a paso con sus herramientas y no lo da por cumplido hasta comprobarlo. Así, un compromiso puede pedir cualquier cosa que esas herramientas resuelvan.
+La ejecución nueva sigue el patrón **actuar, observar y refinar**. En lugar de una ruta fija por acción, el agente cumple cada compromiso paso a paso con sus herramientas y no lo da por cumplido hasta comprobarlo. Así, un compromiso puede pedir cualquier cosa que esas herramientas resuelvan. El diseño combina ReAct, Self-Refine, Reflexion y el estudio de Huang *et al.* sobre la autocorrección ([sección 24](#24-referencias)).
 
 ```mermaid
 flowchart LR
@@ -1611,3 +1611,31 @@ Al reactivar un escenario que Make desactivó por un error, aparece la opción d
 ### Mantenimiento de la memoria
 
 Borrar filas de Memory Stream es seguro: no hay contadores derivados salvo Reflejada, y Citada_por se recalcula solo. Para reiniciar a un agente en un chat basta con borrar sus filas por Agente y Chat_ID. Cambiar el modelo o la dimensión de los embeddings obliga a recalcular el campo Embedding de todas las filas. Para trasladar recuerdos de una conversación a otra se cambia su Chat_ID. Los compromisos se pueden editar a mano en el almacén. Para anular uno, cambia su estado a liberado en lugar de borrarlo.
+
+## 24. Referencias
+
+### Qué paper sigue cada sección
+
+| Sección | Paper | Qué se toma |
+| --- | --- | --- |
+| 5. Escribir | Park *et al.* (2023), apartado 4.1 | La puntuación de importancia de cada recuerdo |
+| 6. Reflexionar | Park *et al.* (2023), apartado 4.2 | Preguntas focales, evidencias y reflexiones que citan sus recuerdos |
+| 7. Recuperar | Park *et al.* (2023), apartado 4.1 | La puntuación combinada de recencia, importancia y relevancia |
+| 8. Planificar · obsoleto | Park *et al.* (2023), apartado 4.3 | El plan diario, que se abandonó |
+| 9. Responder | Park *et al.* (2023) y Shoham (1993) | El diálogo con memoria y resumen del interlocutor, del primero; la clasificación de actos de habla en Percibir, del segundo |
+| 10. Resumen del agente | Park *et al.* (2023) | Las tres consultas sobre el propio agente |
+| 13. Despertador, 14. Cumplir y 17. Comprometer | Shoham (1993) | Estado mental, reglas de compromiso, actos REQUEST y UNREQUEST, abstención (REFRAIN) y ciclo del intérprete AGENT-0 |
+| 18. Ejecución en desarrollo | Yao *et al.* (2023), Madaan *et al.* (2023), Shinn *et al.* (2023) y Huang *et al.* (2024) | El paso con herramienta, el bucle de evaluar y corregir, la corrección verbal y la comprobación sin modelo |
+| 20. Fidelidad al paper | Park *et al.* (2023) y Shoham (1993) | La comparación entre el diseño de cada paper y su implementación |
+
+> [!NOTE]
+> «Actuar, observar y refinar» no es el nombre de un paper concreto. La sección 18 combina los cuatro trabajos de la tabla.
+
+### Bibliografía
+
+1. Park, J. S., O'Brien, J. C., Cai, C. J., Morris, M. R., Liang, P. y Bernstein, M. S. (2023). *Generative Agents: Interactive Simulacra of Human Behavior*. En *UIST '23: Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology*. [arXiv:2304.03442](https://arxiv.org/abs/2304.03442).
+2. Shoham, Y. (1993). *Agent-oriented programming*. *Artificial Intelligence*, 60(1), 51–92. [doi:10.1016/0004-3702(93)90034-9](https://doi.org/10.1016/0004-3702(93)90034-9).
+3. Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K. y Cao, Y. (2023). *ReAct: Synergizing Reasoning and Acting in Language Models*. ICLR 2023. [arXiv:2210.03629](https://arxiv.org/abs/2210.03629).
+4. Madaan, A. *et al.* (2023). *Self-Refine: Iterative Refinement with Self-Feedback*. NeurIPS 2023. [arXiv:2303.17651](https://arxiv.org/abs/2303.17651).
+5. Shinn, N., Cassano, F., Gopinath, A., Narasimhan, K. y Yao, S. (2023). *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS 2023. [arXiv:2303.11366](https://arxiv.org/abs/2303.11366).
+6. Huang, J., Chen, X., Mishra, S., Zheng, H. S., Yu, A. W., Song, X. y Zhou, D. (2024). *Large Language Models Cannot Self-Correct Reasoning Yet*. ICLR 2024. [arXiv:2310.01798](https://arxiv.org/abs/2310.01798).
