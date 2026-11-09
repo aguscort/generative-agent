@@ -1,6 +1,6 @@
-# Generative Agent
+# Human_proxy
 
-Se trata de diseñar un bot de Telegram para conversar con **Borja**, un asesor financiero. Borja recuerda lo que le cuentas, se forma una opinión sobre ti con el tiempo, sigue la actualidad financiera y cumple lo que acepta hacer. No hay comandos: se le escribe con naturalidad, y cada conversación tiene su propia memoria.
+Human_proxy es un bot de Telegram para conversar con **Borja**, un asesor financiero ficticio del Madrid de los 90. Borja recuerda lo que le cuentas, se forma una opinión sobre ti con el tiempo, sigue la actualidad financiera y cumple lo que acepta hacer. No hay comandos: se le escribe con naturalidad, y cada conversación tiene su propia memoria.
 
 Está construido en Make.com sobre tres ideas, cada una tomada de un trabajo de investigación:
 
@@ -52,7 +52,7 @@ flowchart LR
 
 **Cómo funciona.**
 
-1. **Escribir.** Todo entra por un único escenario, (2) Escribir: tus mensajes, las respuestas de Borja, sus reflexiones y lo que aprende. Cada recuerdo se guarda en Airtable con su importancia y su vector.
+1. **Escribir.** Todo entra por un único escenario, (2) Escribir: tus mensajes, las respuestas de Borja, sus reflexiones y lo que aprende. Cada recuerdo se guarda en Airtable con su importancia y su vector. Lo que Borja te escribe lo manda (18) Enviar, que lo memoriza en el mismo paso.
 2. **Recuperar.** Ante una pregunta, (4) Recuperar suma las tres medidas y devuelve los recuerdos con mejor puntuación. La cuenta la hace código, no el modelo.
 3. **Reflexionar.** Cuando se acumula bastante importancia sin procesar, (3) Reflexionar se pregunta qué ha aprendido, busca los recuerdos que lo prueban y guarda cinco conclusiones que los citan. Las conclusiones son también recuerdos, así que pueden alimentar reflexiones posteriores.
 4. **Resumir.** (7) Resumen del agente reconstruye quién es Borja a partir de su memoria.
@@ -110,7 +110,7 @@ Comprometer también ajusta el momento al horario de Borja (laborables de 8:00 a
 | --- | --- | --- |
 | **(15) Actuar** | Elige un solo paso y lo da con una herramienta: cotizar, recordar, buscar, calcular, consultar la cartera, preguntar o enviar un mensaje | Primero cotiza Inditex; después te envía el mensaje |
 | **(16) Observar** | Comprueba sin modelo que la herramienta respondió bien y luego, con Gemini, si ya se cumple el compromiso | Ve que hay precio y pide el paso siguiente; luego ve que el mensaje salió y lo cierra |
-| **(17) Refinar** | Si algo falla, decide: corregir el paso, aplazarlo o darlo por fallido | Si el símbolo no existe, ordena cotizar con el correcto |
+| **(17) Refinar** | Si algo falla, decide: corregir el paso, aplazarlo o darlo por fallido | Si Cotizar no reconoce el símbolo, ordena repetir con el correcto |
 
 Cada compromiso admite como mucho 5 pasos y 2 correcciones. Los mensajes solo van al destinatario del compromiso y respetan sus vetos, y ningún paso puede crear compromisos nuevos ni decidir qué entra en la memoria.
 
@@ -149,11 +149,14 @@ Cada compromiso admite como mucho 5 pasos y 2 correcciones. Los mensajes solo va
 
 Planificar y la versión anterior de Percibir siguen en Make, desactivados y con el prefijo «[OBSOLETO]». No hacen falta para que el sistema funcione.
 
+> [!NOTE]
+> Los blueprints son anteriores a (18) Enviar: en ellos, Gateway, Interpelar y Cumplir mandan sus mensajes directamente por Telegram. Enviar y los tres escenarios de ejecución aún no tienen blueprint; su descripción está en las secciones 18 y 19 de la documentación.
+
 Cada blueprint lleva notas de Make en sus webhooks y en sus llamadas, con el origen y el destino de cada una.
 
 ## Requisitos
 
-- Una cuenta de Make.com con plan de pago, porque la calculadora usa Make Code. Con un usuario, el sistema gasta unos 3.400–3.900 créditos al mes antes de conversar (sección 21 de la documentación).
+- Una cuenta de Make.com con plan de pago, porque la calculadora usa Make Code. Con un usuario, el sistema gasta unos 3.400–3.900 créditos al mes antes de conversar (sección 22 de la documentación).
 - Una base de Airtable, una clave de la API de Gemini y un bot de Telegram.
 - Opcional: Slack, para registrar las conversaciones en un canal.
 
@@ -198,4 +201,4 @@ Las cotizaciones y la prensa no necesitan clave.
 
 - **Token.** Cada llamada entre escenarios lleva el token, y cada escenario con webhook lo comprueba antes de hacer nada. Un webhook bloqueado por el token responde igualmente 200, así que el error no se ve desde fuera: se ve en el historial del escenario.
 - **Datos.** Airtable guarda literalmente lo que cada usuario dice al bot; Cartera, sus inversiones; Compromisos, lo que el agente le ha prometido. Si el bot lo usan otras personas, deben saberlo.
-- **Código.** La ruta de cálculo ejecuta el código que escribe el modelo, en el entorno aislado de Make y tras un filtro de patrones. Si el bot va a hablar con desconocidos, lee la sección 22 de la documentación.
+- **Código.** La ruta de cálculo ejecuta el código que escribe el modelo, en el entorno aislado de Make y tras un filtro de patrones. Si el bot va a hablar con desconocidos, lee la sección 23 de la documentación.
