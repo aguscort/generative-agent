@@ -24,7 +24,7 @@ Un compromiso nace de tres sitios:
 
 Cada compromiso queda en el almacén Compromisos con su momento y su estado. Cumplir lo revisa cada media hora y ejecuta los que han vencido. Nada se borra: un compromiso pasa a cumplido, fallido, liberado o caducado (sección 17).
 
-El repositorio incluye un agente de ejemplo, Borja: un asesor financiero ficticio de una firma de hedge funds del Madrid de los 90. Su personalidad está en un único sitio, su descripción, guardada en un almacén de datos. Lo propio de su oficio está en la acción «agendar», en Noticias, en Cotizar y en las rutas de cartera, cotizaciones y cálculo de Responder. Un agente de otro ámbito solo necesita su descripción: no tendrá agenda financiera, pero conserva la memoria, la reflexión y los compromisos.
+El repositorio incluye un agente de ejemplo, Borja: un asesor financiero ficticio de una firma de hedge funds del Madrid de los 90. Su personalidad parte de su descripción, guardada en un almacén de datos; la sección 3 recoge todos los sitios donde se configura. Lo propio de su oficio está en la acción «agendar», en Noticias, en Cotizar y en las rutas de cartera, cotizaciones y cálculo de Responder. Un agente de otro ámbito necesita su descripción y su nombre: no tendrá agenda financiera, pero conserva la memoria, la reflexión y los compromisos.
 
 | Escenario | Disparo | Función |
 | --- | --- | --- |
@@ -78,7 +78,7 @@ Todas las llamadas entre escenarios llevan un campo `token` en el cuerpo. Cada e
 
 Un mensaje recorre el sistema así:
 
-1. El Gateway lee el perfil del agente, comprueba el límite de frecuencia y llama a Responder.
+1. El Gateway comprueba el límite de frecuencia, lee el perfil del agente y llama a Responder.
 2. Responder pide el resumen del agente, lee lo que sabe del interlocutor, sus compromisos de hoy, los recuerdos relevantes, el historial y la cartera.
 3. Responder percibe el mensaje. Si es una petición o una liberación, llama a Comprometer, que responde con la decisión.
 4. Si el mensaje comunica posiciones, las registra; si pregunta por precios, llama a Cotizar; si pide una cuenta, la calcula.
@@ -122,7 +122,7 @@ flowchart LR
     REC -.-> AT
 ```
 
-Las flechas continuas son llamadas a webhook; las discontinuas, accesos a datos o a fuentes externas. Compromisos lo escriben Comprometer, el Despertador y Cumplir, y lo leen Comprometer, Cumplir y Responder.
+Las flechas continuas son llamadas a webhook; las discontinuas, accesos a datos o a fuentes externas. Compromisos lo escriben Comprometer, el Despertador y Cumplir, y lo leen Comprometer, Cumplir y Responder. Los escenarios de ejecución, aún desactivados, también lo usan: Actuar lo lee, y Observar y Refinar lo escriben.
 
 Sin que nadie escriba, el Despertador deja a las 5:00 la orden de agendar, Cumplir revisa los compromisos cada media hora y Noticias lee la prensa dos veces al día.
 
@@ -170,7 +170,7 @@ Make no admite el módulo de respuesta de webhook en un escenario secuencial y d
 
 Todos usan el máximo de 3 errores seguidos de Make antes de desactivarse y confirman cada operación al terminarla (auto-commit).
 
-Cada escenario lleva notas de Make en sus webhooks y en sus llamadas, con el origen y el destino:
+Casi todos los escenarios llevan notas de Make en sus webhooks y en sus llamadas, con el origen y el destino. Varias se escribieron antes de que existieran Cumplir, Comprometer y Enviar y no están al día; la relación vigente es esta:
 
 | Webhook de destino | Lo llaman (escenario y módulo) |
 | --- | --- |
@@ -231,10 +231,10 @@ Los registros de tipo `plan` que dejó Planificar, y los de tipo `evento` de ver
 | Caché (campos agente, chat_id, resumen, actualizado) | `perfil\|<agente>` | Descripción del personaje, en el campo resumen, con chat_id `GLOBAL` |
 | | `<agente>\|<chat_id>` | Resumen del agente en ese chat (escenario 7) |
 | | `rel\|<agente>\|<chat_id>` | Lo que el agente sabe de su interlocutor (escenario 6) |
-| Cartera (campos agente, chat_id, cartera, posiciones, actualizado) | `<agente>\|<chat_id>` | En `cartera`, un resumen en texto de las posiciones, los intereses y el horizonte del usuario; en `posiciones`, la lista estructurada en JSON. La escribe Responder y la leen Responder, Cumplir y Noticias |
+| Cartera (campos agente, chat_id, cartera, posiciones, actualizado) | `<agente>\|<chat_id>` | En `cartera`, un resumen en texto de las posiciones, los intereses y el horizonte del usuario; en `posiciones`, la lista estructurada en JSON. La escribe Responder y la leen Responder, Cumplir, Noticias y Actuar |
 | Compromisos (campos agente, comprometido_con, destinatario, accion, momento, condicion, simbolos, contenido, linea, origen, intentos, nivel, creado, estado, fin) | La genera Make; `agendar\|<agente>\|<fecha>` para la orden del Despertador | Un compromiso por registro, con su momento y su estado (sección 17) |
 
-El perfil es la única fuente de la personalidad. Lo leen el Gateway, el Despertador y Cumplir, y el Gateway lo pasa a Responder y Estudiar. El límite de longitud de las respuestas no está en el perfil, porque solo aplica a Telegram: el Gateway añade «Limita la respuesta a una o dos frases, sin pasar de 20 palabras» únicamente en la llamada a Responder.
+El perfil es la base de la personalidad del agente. Quién lo lee y qué más da forma al personaje está al final de esta sección.
 
 El campo `posiciones` es un texto con una lista JSON, un objeto por valor:
 
@@ -245,6 +245,38 @@ El campo `posiciones` es un texto con una lista JSON, un objeto por valor:
 El símbolo es el de Yahoo Finance, para que la calculadora pueda cruzarlo con las cotizaciones. Una cantidad o un precio medio de 0 significan que el usuario no los dio.
 
 El módulo Data store · Get a record exige `returnWrapped: false` en el blueprint aunque la interfaz no lo muestre; sin él falla con `BundleValidationError`.
+
+### Dónde se configura la personalidad del agente
+
+La personalidad del agente sale de tres fuentes: una descripción fija, lo que su memoria dice de él y las instrucciones de los prompts que le hacen hablar. Para cambiar de agente o retocar su carácter, estos son los sitios.
+
+**Lo que se escribe a mano.**
+
+| Dónde | Qué configura | Quién lo usa |
+| --- | --- | --- |
+| Almacén Caché, registro `perfil\|<agente>`, campo `resumen` | La descripción del personaje: quién es, a qué se dedica y cómo habla. Es la pieza principal | El Gateway (960), que la pasa a Responder y a Estudiar como `descripcion`. Cumplir (1), Noticias (3) y Actuar (2) la leen directamente |
+| Gateway, módulos 2, 4, 5, 6, 15, 957 y 960 | El nombre del agente, `Borja`, escrito en los cuerpos, en la fórmula de Airtable, en el registro de Slack y en la clave del perfil. De él dependen la clave del perfil y la separación de la memoria | Todos los escenarios reciben `agente` del Gateway |
+| Despertador 1 y Noticias 3 | El mismo nombre, escrito en la clave `perfil\|Borja` | Despertador y Noticias, que no reciben el nombre de nadie |
+| Gateway 2, cuerpo de la llamada a Responder | La extensión de las respuestas: «Limita la respuesta a una o dos frases, sin pasar de 20 palabras», añadido tras la descripción. No está en el perfil porque solo aplica a Telegram | Responder |
+
+**Lo que se aprende.**
+
+| Dónde | Qué configura | Quién lo usa |
+| --- | --- | --- |
+| La memoria en Airtable, a través de (7) Resumen del agente | Lo que el agente ha llegado a saber de sí mismo: sus rasgos, su ocupación y cómo se siente, deducidos de sus recuerdos y guardados 7 días en caché. Cambia con lo vivido | Responder 9, que lo añade a la instrucción de sistema |
+
+**Los prompts que hablan como el agente.**
+
+| Dónde | Qué configura |
+| --- | --- |
+| Responder 5 | La instrucción de sistema une la descripción, lo que sabe de sí mismo y las reglas del personaje: mantenerse en él, escribir con la extensión de un chat y en el idioma del interlocutor, y no inventar recuerdos ni cifras. El prompt le pide explicar un rechazo «con tu estilo» |
+| Interpelar 4 | La pregunta por iniciativa propia, con la descripción como instrucción de sistema y la orden de escribirla «en su personaje» |
+| Cumplir 3, 8, 40, 51 y 56 | Lo que redacta al cumplir compromisos, con el perfil como instrucción de sistema: el resultado de un evento y su valoración (3 y 8), la agenda del día (40) y los avisos de informar (51 y 56) |
+| Noticias 8 | Su valoración de los titulares, con el perfil como instrucción de sistema |
+| Actuar 3 y 14 | El plan de cada paso y las búsquedas, con el perfil como instrucción de sistema (en desarrollo) |
+| Estudiar 2 | La decisión de qué investigar, con el perfil dentro del prompt para que decida según su oficio |
+
+Quedan fuera del personaje, a propósito, los módulos que clasifican o calculan: Responder 50, 30, 22, 40 y 11, y Observar y Refinar. Cada uno tiene su propia instrucción de sistema, neutra. También quedan fuera los dos avisos fijos del Gateway (10 y 967) y los textos de Comprometer («ACEPTADO. Borja se ha comprometido…»): Responder los lee y los dice con sus palabras.
 
 ## 4. (1) Gateway Telegram
 
