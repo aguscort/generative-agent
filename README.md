@@ -146,11 +146,12 @@ Cada compromiso admite como mucho 5 pasos y 2 correcciones. Los mensajes solo va
 | `blueprints/12_noticias.blueprint.json` | (12) Noticias | Laborables, 8:00 y 16:00 |
 | `blueprints/13_cotizar.blueprint.json` | (13) Cotizar | Webhook |
 | `blueprints/14_comprometer.blueprint.json` | (14) Comprometer | Webhook |
+| `blueprints/15_actuar.blueprint.json` | (15) Actuar · en desarrollo | Webhook, desactivado |
+| `blueprints/16_observar.blueprint.json` | (16) Observar · en desarrollo | Webhook, desactivado |
+| `blueprints/17_refinar.blueprint.json` | (17) Refinar · en desarrollo | Webhook, desactivado |
+| `blueprints/18_enviar.blueprint.json` | (18) Enviar | Webhook |
 
-Planificar y la versión anterior de Percibir siguen en Make, desactivados y con el prefijo «[OBSOLETO]». No hacen falta para que el sistema funcione.
-
-> [!NOTE]
-> Los blueprints son anteriores a (18) Enviar: en ellos, Gateway, Interpelar y Cumplir mandan sus mensajes directamente por Telegram. Enviar y los tres escenarios de ejecución aún no tienen blueprint; su descripción está en las secciones 18 y 19 de la documentación.
+Planificar y la versión anterior de Percibir siguen en Make, desactivados y con el prefijo «[OBSOLETO]». No hacen falta para que el sistema funcione; Planificar se incluye como referencia.
 
 Cada blueprint lleva notas de Make en sus webhooks y en sus llamadas, con el origen y el destino de cada una.
 
@@ -189,10 +190,10 @@ Las cotizaciones y la prensa no necesitan clave.
 | --- | --- |
 | `<TOKEN>` | El token secreto común |
 | `<WEBHOOK_ESCRIBIR>`, `<WEBHOOK_RESPONDER>`… | El identificador del webhook de cada escenario |
-| `<AIRTABLE_BASE_ID>`, `<AIRTABLE_TABLE_ID>`, `<AIRTABLE_VIEW_ID>` | La base, la tabla Memory Stream y su vista |
+| `<AIRTABLE_BASE_ID>`, `<AIRTABLE_TABLE_ID>` | La base y la tabla Memory Stream |
 | `<FLD_MEMORIA>`, `<FLD_TIPO>`… | El ID de cada campo de la tabla; el nombre indica cuál |
 | `<SLACK_CHANNEL_ID>` | El canal de Slack, si lo usas |
-| `<USUARIO>` | Tu nombre, donde aparezca en un prompt o en un filtro |
+| `<USUARIO_TELEGRAM_ID>` | Tu ID numérico de Telegram, en los dos filtros del Gateway que separan al usuario identificado del resto |
 
 ## Seguridad
 

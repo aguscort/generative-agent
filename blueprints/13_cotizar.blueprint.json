@@ -1,0 +1,185 @@
+{
+    "name": "[Human_proxy]:[Skills] (13/13) | Cotizar",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": null,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 150
+                }
+            }
+        },
+        {
+            "id": 2,
+            "module": "builtin:BasicFeeder",
+            "version": 1,
+            "parameters": {},
+            "filter": {
+                "name": "Token correcto",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{1.token}}",
+                            "b": "<TOKEN>",
+                            "o": "text:equal"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "array": "{{slice(split(replace(1.simbolos; \" \"; \"\"); \",\"); 0; 5)}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 150
+                }
+            }
+        },
+        {
+            "id": 3,
+            "module": "http:MakeRequest",
+            "version": 4,
+            "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+            },
+            "filter": {
+                "name": "Símbolo no vacío",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{2.value}}",
+                            "o": "exist"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "url": "https://query1.finance.yahoo.com/v8/finance/chart/{{encodeURL(2.value)}}?interval=1d&range=1d",
+                "method": "get",
+                "headers": [
+                    {
+                        "name": "User-Agent",
+                        "value": "Mozilla/5.0"
+                    }
+                ],
+                "timeout": "30",
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": false,
+                "requestCompressedContent": true
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 150
+                }
+            },
+            "onerror": [
+                {
+                    "id": 903,
+                    "module": "builtin:Ignore",
+                    "version": 1,
+                    "metadata": {
+                        "designer": {
+                            "x": 900,
+                            "y": 300
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "module": "util:TextAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 2,
+                "rowSeparator": ","
+            },
+            "mapper": {
+                "value": "{\"simbolo\": \"{{escapeJSON(2.value)}}\", \"nombre\": \"{{escapeJSON(get(3.data.chart.result; \"1.meta.longName\"))}}\", \"precio\": {{ifempty(get(3.data.chart.result; \"1.meta.regularMarketPrice\"); \"null\")}}, \"cierre_anterior\": {{ifempty(get(3.data.chart.result; \"1.meta.chartPreviousClose\"); \"null\")}}, \"moneda\": \"{{get(3.data.chart.result; \"1.meta.currency\")}}\", \"hora\": \"{{if(get(3.data.chart.result; \"1.meta.regularMarketTime\"); formatDate(parseDate(get(3.data.chart.result; \"1.meta.regularMarketTime\"); \"X\"); \"DD/MM/YYYY HH:mm\"; \"Europe/Madrid\"); \"\")}}\", \"error\": \"{{escapeJSON(3.data.chart.error.description)}}\"}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 5,
+            "module": "gateway:WebhookRespond",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "body": "{\"precios\": [{{4.text}}]}",
+                "status": "200",
+                "headers": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 0
+                }
+            }
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": [
+            {
+                "moduleIds": [
+                    3
+                ],
+                "content": "<p><strong>Yahoo Finance, endpoint de gráficos</strong></p><p>Sin clave. Símbolos al estilo Yahoo: Madrid con sufijo .MC (ITX.MC), EE. UU. sin sufijo, índices con ^ (^IBEX).</p><p>Es un endpoint no oficial: puede cambiar o bloquearse sin aviso.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    1
+                ],
+                "content": "<p><strong>Webhook de entrada</strong></p><p>Origen: (6) Responder, cuando el mensaje pregunta por precios o mercado.</p><p>Destino: este escenario, (13) Cotizar. Recibe <em>simbolos</em> separados por comas (máximo 5) y devuelve <em>precios</em>: lista JSON con simbolo, nombre, precio, cierre_anterior, moneda, hora y error.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            }
+        ]
+    }
+}

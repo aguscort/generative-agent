@@ -1,0 +1,205 @@
+{
+    "name": "[Human_proxy]:[Skills] (17/17) | Enviar",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": null,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 2,
+            "module": "telegram:SendReplyMessage",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "filter": {
+                "name": "Token correcto",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{1.token}}",
+                            "b": "<TOKEN>",
+                            "o": "text:equal"
+                        },
+                        {
+                            "a": "{{1.chat_id}}",
+                            "o": "exist"
+                        },
+                        {
+                            "a": "{{1.texto}}",
+                            "o": "exist"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "text": "{{1.texto}}",
+                "chatId": "{{1.chat_id}}",
+                "parseMode": "",
+                "replyMarkup": "",
+                "messageThreadId": "",
+                "replyToMessageId": "",
+                "replyMarkupAssembleType": "reply_markup_enter"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 5,
+                    "module": "gateway:WebhookRespond",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {
+                        "body": "FALLO: Telegram no ha aceptado el mensaje.",
+                        "status": "200",
+                        "headers": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain; charset=utf-8"
+                            }
+                        ]
+                    },
+                    "metadata": {
+                        "designer": {
+                            "x": 300,
+                            "y": 300
+                        }
+                    }
+                },
+                {
+                    "id": 902,
+                    "module": "builtin:Ignore",
+                    "version": 1,
+                    "metadata": {
+                        "designer": {
+                            "x": 600,
+                            "y": 300
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "module": "gateway:WebhookRespond",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "body": "enviado {{2.message_id}}: {{1.texto}}",
+                "status": "200",
+                "headers": [
+                    {
+                        "key": "Content-Type",
+                        "value": "text/plain; charset=utf-8"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 4,
+            "module": "http:MakeRequest",
+            "version": 4,
+            "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+            },
+            "filter": {
+                "name": "Hay algo que memorizar",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{1.memoria}}",
+                            "o": "exist"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_ESCRIBIR>",
+                "method": "post",
+                "timeout": "40",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": false,
+                "allowRedirects": true,
+                "stopOnHttpError": false,
+                "jsonStringBodyContent": "{\"token\": \"{{escapeJSON(1.token)}}\", \"memoria\": \"{{escapeJSON(1.memoria)}}\", \"tipo\": \"{{escapeJSON(ifempty(1.tipo; \"observacion\"))}}\", \"agente\": \"{{escapeJSON(1.agente)}}\", \"chat_id\": \"{{escapeJSON(1.chat_id)}}\", \"autor\": \"{{escapeJSON(ifempty(1.autor; \"agente\"))}}\", \"nivel\": \"{{escapeJSON(1.nivel)}}\"}",
+                "requestCompressedContent": true
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 904,
+                    "module": "builtin:Ignore",
+                    "version": 1,
+                    "metadata": {
+                        "designer": {
+                            "x": 900,
+                            "y": 300
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": [
+            {
+                "moduleIds": [
+                    1
+                ],
+                "content": "<p><strong>Enviar</strong></p><p>Envía un mensaje de Telegram al chat indicado y, si recibe <em>memoria</em>, la guarda con Escribir. Responde «enviado &lt;id&gt;: &lt;texto&gt;» en cuanto Telegram acepta el mensaje, o «FALLO: …» si no lo acepta. No comprueba vetos: eso lo hace quien lo llama. Lo llaman Gateway, Interpelar, Cumplir y Actuar.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            }
+        ]
+    }
+}

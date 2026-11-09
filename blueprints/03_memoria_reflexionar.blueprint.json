@@ -1,434 +1,539 @@
 {
-  "name": "[Human_proxy] (3/9) | Memoria: Reflexionar",
-  "flow": [
-    {
-      "id": 1,
-      "module": "gateway:CustomWebHook",
-      "version": 1,
-      "parameters": {
-        "hook": null,
-        "maxResults": 1
-      },
-      "mapper": {},
-      "metadata": {
-        "designer": {
-          "x": 0,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 2,
-      "module": "gateway:WebhookRespond",
-      "version": 1,
-      "parameters": {},
-      "mapper": {
-        "body": "{\"estado\": \"reflexion en curso\", \"agente\": \"{{1.agente}}\"}",
-        "status": "202",
-        "headers": []
-      },
-      "metadata": {
-        "designer": {
-          "x": 300,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 3,
-      "module": "builtin:BasicRouter",
-      "version": 1,
-      "mapper": null,
-      "metadata": {
-        "designer": {
-          "x": 600,
-          "y": 0
-        }
-      },
-      "routes": [
+    "name": "[Human_proxy]:[Memoria] (03/13) | Reflexionar",
+    "flow": [
         {
-          "flow": [
-            {
-              "id": 12,
-              "module": "airtable:ActionSearchRecords",
-              "version": 3,
-              "parameters": {
-                "__IMTCONN__": null
-              },
-              "mapper": {
-                "base": "<AIRTABLE_BASE_ID>",
-                "table": "<AIRTABLE_TABLE_ID>",
-                "fields": [
-                  "Tipo"
-                ],
-                "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"{{1.chat_id}}\", {Tipo}=\"observacion\", NOT({Reflejada}))",
-                "maxRecords": "500",
-                "useColumnId": false,
-                "formulaField": "formula"
-              },
-              "metadata": {
-                "designer": {
-                  "x": 900,
-                  "y": -150
-                }
-              }
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": null,
+                "maxResults": 1
             },
-            {
-              "id": 13,
-              "module": "airtable:ActionUpdateRecords",
-              "version": 3,
-              "parameters": {
-                "__IMTCONN__": null
-              },
-              "mapper": {
-                "id": "{{12.id}}",
-                "base": "<AIRTABLE_BASE_ID>",
-                "table": "<AIRTABLE_TABLE_ID>",
-                "record": {
-                  "<FLD_REFLEJADA>": true
-                },
-                "typecast": false,
-                "useColumnId": false
-              },
-              "metadata": {
+            "mapper": {},
+            "metadata": {
                 "designer": {
-                  "x": 1200,
-                  "y": -150
+                    "x": 0,
+                    "y": 150
                 }
-              }
             }
-          ]
         },
         {
-          "flow": [
-            {
-              "id": 4,
-              "module": "airtable:ActionSearchRecords",
-              "version": 3,
-              "parameters": {
-                "__IMTCONN__": null
-              },
-              "mapper": {
-                "base": "<AIRTABLE_BASE_ID>",
-                "sort": [
-                  {
-                    "field": "Creado",
-                    "direction": "desc"
-                  }
-                ],
-                "table": "<AIRTABLE_TABLE_ID>",
-                "fields": [
-                  "Memoria"
-                ],
-                "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"{{1.chat_id}}\")",
-                "maxRecords": "100",
-                "useColumnId": false,
-                "formulaField": "formula"
-              },
-              "metadata": {
-                "designer": {
-                  "x": 900,
-                  "y": 150
-                }
-              }
-            },
-            {
-              "id": 6,
-              "module": "util:TextAggregator",
-              "version": 1,
-              "parameters": {
-                "feeder": 4,
-                "rowSeparator": "\n"
-              },
-              "mapper": {
-                "value": "{{4.__IMTINDEX__}}. ({{4.id}}) {{4.Memoria}}"
-              },
-              "metadata": {
-                "designer": {
-                  "x": 1200,
-                  "y": 150
-                }
-              }
-            },
-            {
-              "id": 7,
-              "module": "gemini-ai:createACompletionGeminiPro",
-              "version": 1,
-              "parameters": {
-                "__IMTCONN__": null
-              },
-              "mapper": {
-                "model": "gemini-3.8-flash",
-                "contents": [
-                  {
-                    "role": "user",
-                    "parts": [
-                      {
-                        "text": "Recuerdos recientes de {{1.agente}}:\n{{6.text}}\n\nBasándote únicamente en la información anterior, ¿cuáles son las 3 preguntas de alto nivel más relevantes que podemos responder sobre los sujetos de estas afirmaciones?\nResponde solo con las 3 preguntas, una por línea, sin numeración.",
-                        "type": "text"
-                      }
-                    ]
-                  }
-                ],
-                "generationConfig": {
-                  "imageConfig": {},
-                  "thinkingConfig": {}
-                },
-                "system_instruction": {}
-              },
-              "metadata": {
-                "designer": {
-                  "x": 1500,
-                  "y": 150
-                }
-              }
-            },
-            {
-              "id": 15,
-              "module": "builtin:BasicFeeder",
-              "version": 1,
-              "parameters": {},
-              "mapper": {
-                "array": "{{split(7.result; newline)}}"
-              },
-              "metadata": {
-                "designer": {
-                  "x": 1800,
-                  "y": 150
-                }
-              }
-            },
-            {
-              "id": 16,
-              "module": "http:MakeRequest",
-              "version": 4,
-              "parameters": {
-                "tlsType": "",
-                "authenticationType": "noAuth"
-              },
-              "filter": {
-                "name": "Pregunta no vacía",
+            "id": 2,
+            "module": "gateway:WebhookRespond",
+            "version": 1,
+            "parameters": {},
+            "filter": {
+                "name": "Token correcto",
                 "conditions": [
-                  [
-                    {
-                      "a": "{{trim(15.value)}}",
-                      "o": "exist"
-                    }
-                  ]
-                ]
-              },
-              "mapper": {
-                "url": "https://hook.eu1.make.com/<WEBHOOK_RECUPERAR>",
-                "method": "post",
-                "timeout": "60",
-                "contentType": "json",
-                "inputMethod": "jsonString",
-                "shareCookies": false,
-                "parseResponse": true,
-                "allowRedirects": true,
-                "stopOnHttpError": true,
-                "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"consulta\": \"{{escapeJSON(15.value)}}\", \"k\": 10}",
-                "requestCompressedContent": true
-              },
-              "metadata": {
-                "designer": {
-                  "x": 2100,
-                  "y": 150
-                }
-              }
-            },
-            {
-              "id": 17,
-              "module": "util:TextAggregator",
-              "version": 1,
-              "parameters": {
-                "feeder": 15,
-                "rowSeparator": "\n"
-              },
-              "mapper": {
-                "value": "Pregunta: {{15.value}}\n{{16.data.texto_ids}}\n"
-              },
-              "metadata": {
-                "designer": {
-                  "x": 2400,
-                  "y": 150
-                }
-              }
-            },
-            {
-              "id": 8,
-              "module": "gemini-ai:createACompletionGeminiPro",
-              "version": 1,
-              "parameters": {
-                "__IMTCONN__": null
-              },
-              "mapper": {
-                "model": "gemini-3.8-flash",
-                "contents": [
-                  {
-                    "role": "user",
-                    "parts": [
-                      {
-                        "text": "Para cada pregunta de alto nivel, estas son las afirmaciones relevantes que recuerda {{1.agente}} (cada una con su identificador entre paréntesis):\n{{17.text}}\n\n¿Qué 5 conclusiones de alto nivel puedes inferir de las afirmaciones anteriores? (formato de ejemplo: conclusión (por 1, 5, 3))\nDevuelve exclusivamente un JSON con esta forma: {\"insights\": [{\"insight\": \"texto de la conclusión\", \"evidencias\": [\"recXXXXXXXXXXXXXX\"]}]}. En \"evidencias\" pon los identificadores (los que van entre paréntesis, empiezan por rec) de las afirmaciones que justifican cada conclusión, copiados literalmente.",
-                        "type": "text"
-                      }
+                    [
+                        {
+                            "a": "{{1.token}}",
+                            "b": "<TOKEN>",
+                            "o": "text:equal"
+                        }
                     ]
-                  }
-                ],
-                "generationConfig": {
-                  "imageConfig": {},
-                  "responseSchema": "{\"type\": \"object\", \"properties\": {\"insights\": {\"type\": \"array\", \"items\": {\"type\": \"object\", \"properties\": {\"insight\": {\"type\": \"string\"}, \"evidencias\": {\"type\": \"array\", \"items\": {\"type\": \"string\"} } }, \"required\": [\"insight\", \"evidencias\"] } } }, \"required\": [\"insights\"] }",
-                  "thinkingConfig": {},
-                  "responseMimeType": "application/json"
-                },
-                "system_instruction": {}
-              },
-              "metadata": {
-                "designer": {
-                  "x": 2700,
-                  "y": 150
-                }
-              }
+                ]
             },
-            {
-              "id": 9,
-              "module": "json:ParseJSON",
-              "version": 1,
-              "parameters": {
-                "type": ""
-              },
-              "mapper": {
-                "json": "{{8.result}}"
-              },
-              "metadata": {
-                "designer": {
-                  "x": 3000,
-                  "y": 150
-                }
-              }
+            "mapper": {
+                "body": "{\"estado\": \"reflexion en curso\", \"agente\": \"{{1.agente}}\"}",
+                "status": "202",
+                "headers": []
             },
-            {
-              "id": 10,
-              "module": "builtin:BasicFeeder",
-              "version": 1,
-              "parameters": {},
-              "mapper": {
-                "array": "{{9.insights}}"
-              },
-              "metadata": {
+            "metadata": {
                 "designer": {
-                  "x": 3300,
-                  "y": 150
+                    "x": 300,
+                    "y": 150
                 }
-              }
-            },
-            {
-              "id": 11,
-              "module": "http:MakeRequest",
-              "version": 4,
-              "parameters": {
-                "tlsType": "",
-                "authenticationType": "noAuth"
-              },
-              "mapper": {
-                "url": "https://hook.eu1.make.com/<WEBHOOK_ESCRIBIR>",
-                "method": "post",
-                "timeout": "120",
-                "contentType": "json",
-                "inputMethod": "jsonString",
-                "shareCookies": false,
-                "parseResponse": true,
-                "allowRedirects": true,
-                "stopOnHttpError": true,
-                "jsonStringBodyContent": "{\"memoria\": \"{{escapeJSON(10.insight)}}\", \"tipo\": \"reflexion\", \"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"autor\": \"sistema\"}",
-                "requestCompressedContent": true
-              },
-              "metadata": {
-                "designer": {
-                  "x": 3600,
-                  "y": 150
-                }
-              }
-            },
-            {
-              "id": 14,
-              "module": "airtable:ActionUpdateRecords",
-              "version": 3,
-              "parameters": {
-                "__IMTCONN__": null
-              },
-              "mapper": {
-                "id": "{{11.data.id}}",
-                "base": "<AIRTABLE_BASE_ID>",
-                "table": "<AIRTABLE_TABLE_ID>",
-                "record": {
-                  "<FLD_EVIDENCIAS>": "{{10.evidencias}}"
-                },
-                "typecast": false,
-                "useColumnId": false
-              },
-              "metadata": {
-                "designer": {
-                  "x": 3900,
-                  "y": 150
-                }
-              }
             }
-          ]
+        },
+        {
+            "id": 3,
+            "module": "builtin:BasicRouter",
+            "version": 1,
+            "mapper": null,
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 150
+                }
+            },
+            "routes": [
+                {
+                    "flow": [
+                        {
+                            "id": 12,
+                            "module": "airtable:ActionSearchRecords",
+                            "version": 3,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "mapper": {
+                                "base": "<AIRTABLE_BASE_ID>",
+                                "table": "<AIRTABLE_TABLE_ID>",
+                                "fields": [
+                                    "Tipo"
+                                ],
+                                "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"{{1.chat_id}}\", {Tipo}=\"observacion\", NOT({Reflejada}))",
+                                "maxRecords": "500",
+                                "useColumnId": false,
+                                "formulaField": "formula"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 900,
+                                    "y": 0
+                                }
+                            }
+                        },
+                        {
+                            "id": 13,
+                            "module": "airtable:ActionUpdateRecords",
+                            "version": 3,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "mapper": {
+                                "id": "{{12.id}}",
+                                "base": "<AIRTABLE_BASE_ID>",
+                                "table": "<AIRTABLE_TABLE_ID>",
+                                "record": {
+                                    "<FLD_REFLEJADA>": true
+                                },
+                                "typecast": false,
+                                "useColumnId": false
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": 0
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 4,
+                            "module": "airtable:ActionSearchRecords",
+                            "version": 3,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "mapper": {
+                                "base": "<AIRTABLE_BASE_ID>",
+                                "sort": [
+                                    {
+                                        "field": "Creado",
+                                        "direction": "desc"
+                                    }
+                                ],
+                                "table": "<AIRTABLE_TABLE_ID>",
+                                "fields": [
+                                    "Memoria"
+                                ],
+                                "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"{{1.chat_id}}\")",
+                                "maxRecords": "100",
+                                "useColumnId": false,
+                                "formulaField": "formula"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 900,
+                                    "y": 300
+                                }
+                            }
+                        },
+                        {
+                            "id": 6,
+                            "module": "util:TextAggregator",
+                            "version": 1,
+                            "parameters": {
+                                "feeder": 4,
+                                "rowSeparator": "\n"
+                            },
+                            "mapper": {
+                                "value": "{{4.__IMTINDEX__}}. ({{4.id}}) {{4.Memoria}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": 300
+                                }
+                            }
+                        },
+                        {
+                            "id": 7,
+                            "module": "gemini-ai:createACompletionGeminiPro",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "mapper": {
+                                "model": "gemini-3.8-flash",
+                                "contents": [
+                                    {
+                                        "role": "user",
+                                        "parts": [
+                                            {
+                                                "text": "Recuerdos recientes de {{1.agente}}:\n{{6.text}}\n\nBasándote únicamente en la información anterior, ¿cuáles son las 3 preguntas de alto nivel más relevantes que podemos responder sobre los sujetos de estas afirmaciones?\nResponde solo con las 3 preguntas, una por línea, sin numeración.",
+                                                "type": "text"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "generationConfig": {
+                                    "imageConfig": {},
+                                    "thinkingConfig": {}
+                                },
+                                "system_instruction": {}
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": 300
+                                }
+                            }
+                        },
+                        {
+                            "id": 15,
+                            "module": "builtin:BasicFeeder",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "array": "{{split(7.result; newline)}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1800,
+                                    "y": 300
+                                }
+                            }
+                        },
+                        {
+                            "id": 16,
+                            "module": "http:MakeRequest",
+                            "version": 4,
+                            "parameters": {
+                                "tlsType": "",
+                                "authenticationType": "noAuth"
+                            },
+                            "filter": {
+                                "name": "Pregunta no vacía",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{trim(15.value)}}",
+                                            "o": "exist"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "url": "https://hook.eu1.make.com/<WEBHOOK_RECUPERAR>",
+                                "method": "post",
+                                "timeout": "60",
+                                "contentType": "json",
+                                "inputMethod": "jsonString",
+                                "shareCookies": false,
+                                "parseResponse": true,
+                                "allowRedirects": true,
+                                "stopOnHttpError": true,
+                                "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"consulta\": \"{{escapeJSON(15.value)}}\", \"k\": 10, \"token\": \"<TOKEN>\"}",
+                                "requestCompressedContent": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 2100,
+                                    "y": 300
+                                }
+                            }
+                        },
+                        {
+                            "id": 17,
+                            "module": "util:TextAggregator",
+                            "version": 1,
+                            "parameters": {
+                                "feeder": 15,
+                                "rowSeparator": "\n"
+                            },
+                            "mapper": {
+                                "value": "Pregunta: {{15.value}}\n{{16.data.texto_ids}}\n"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 2400,
+                                    "y": 300
+                                }
+                            }
+                        },
+                        {
+                            "id": 8,
+                            "module": "gemini-ai:createACompletionGeminiPro",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "mapper": {
+                                "model": "gemini-3.8-flash",
+                                "contents": [
+                                    {
+                                        "role": "user",
+                                        "parts": [
+                                            {
+                                                "text": "Para cada pregunta de alto nivel, estas son las afirmaciones relevantes que recuerda {{1.agente}} (cada una con su identificador entre paréntesis):\n{{17.text}}\n\n¿Qué 5 conclusiones de alto nivel puedes inferir de las afirmaciones anteriores? (formato de ejemplo: conclusión (por 1, 5, 3))\nDevuelve exclusivamente un JSON con esta forma: {\"insights\": [{\"insight\": \"texto de la conclusión\", \"evidencias\": [\"recXXXXXXXXXXXXXX\"]}]}. En \"evidencias\" pon los identificadores (los que van entre paréntesis, empiezan por rec) de las afirmaciones que justifican cada conclusión, copiados literalmente.\n\nDespués, piensa como {{1.agente}}: ¿alguna de estas conclusiones le hace ver que tiene que hacer algo concreto que sabe hacer? Sus capacidades son informar (escribir por iniciativa propia a su interlocutor), preguntar (hacerle una pregunta), investigar (buscar información sobre un tema), cotizar (consultar precios de valores para sí mismo) y estudiar (analizar un evento o un dato económico cuando se publique). Si alguna lo exige, describe en \"accion\" la más necesaria, solo una y de un solo paso: necesaria true; accion; dia (AAAA-MM-DD) y hora (HH:mm) en hora de Madrid, vacíos si es para ahora; condicion, la condición de la que depende o vacía; simbolos, símbolos de Yahoo Finance separados por comas o vacío; y contenido, qué hará, en una frase con los datos concretos. Si ninguna conclusión exige actuar, pon necesaria false y deja vacíos los demás campos; lo normal es que no haga falta actuar. Ahora es {{formatDate(now; \"YYYY-MM-DD [a las] HH:mm\"; \"Europe/Madrid\")}}, hora de Madrid.",
+                                                "type": "text"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "generationConfig": {
+                                    "imageConfig": {},
+                                    "responseSchema": "{\"type\":\"object\",\"properties\":{\"insights\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"insight\":{\"type\":\"string\"},\"evidencias\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"insight\",\"evidencias\"]}},\"accion\":{\"type\":\"object\",\"properties\":{\"necesaria\":{\"type\":\"boolean\"},\"accion\":{\"type\":\"string\"},\"dia\":{\"type\":\"string\"},\"hora\":{\"type\":\"string\"},\"condicion\":{\"type\":\"string\"},\"simbolos\":{\"type\":\"string\"},\"contenido\":{\"type\":\"string\"}},\"required\":[\"necesaria\",\"accion\",\"dia\",\"hora\",\"condicion\",\"simbolos\",\"contenido\"]}},\"required\":[\"insights\",\"accion\"]}",
+                                    "thinkingConfig": {},
+                                    "responseMimeType": "application/json"
+                                },
+                                "system_instruction": {}
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 2700,
+                                    "y": 300
+                                }
+                            }
+                        },
+                        {
+                            "id": 9,
+                            "module": "json:ParseJSON",
+                            "version": 1,
+                            "parameters": {
+                                "type": ""
+                            },
+                            "mapper": {
+                                "json": "{{8.result}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3000,
+                                    "y": 300
+                                }
+                            }
+                        },
+                        {
+                            "id": 30,
+                            "module": "builtin:BasicRouter",
+                            "version": 1,
+                            "mapper": null,
+                            "metadata": {
+                                "designer": {
+                                    "x": 3300,
+                                    "y": 300
+                                }
+                            },
+                            "routes": [
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 10,
+                                            "module": "builtin:BasicFeeder",
+                                            "version": 1,
+                                            "parameters": {},
+                                            "mapper": {
+                                                "array": "{{9.insights}}"
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 3600,
+                                                    "y": 300
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "id": 11,
+                                            "module": "http:MakeRequest",
+                                            "version": 4,
+                                            "parameters": {
+                                                "tlsType": "",
+                                                "authenticationType": "noAuth"
+                                            },
+                                            "mapper": {
+                                                "url": "https://hook.eu1.make.com/<WEBHOOK_ESCRIBIR>",
+                                                "method": "post",
+                                                "timeout": "120",
+                                                "contentType": "json",
+                                                "inputMethod": "jsonString",
+                                                "shareCookies": false,
+                                                "parseResponse": true,
+                                                "allowRedirects": true,
+                                                "stopOnHttpError": true,
+                                                "jsonStringBodyContent": "{\"memoria\": \"{{escapeJSON(10.insight)}}\", \"tipo\": \"reflexion\", \"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"autor\": \"sistema\", \"token\": \"<TOKEN>\"}",
+                                                "requestCompressedContent": true
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 3900,
+                                                    "y": 300
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "id": 14,
+                                            "module": "airtable:ActionUpdateRecords",
+                                            "version": 3,
+                                            "parameters": {
+                                                "__IMTCONN__": null
+                                            },
+                                            "mapper": {
+                                                "id": "{{11.data.id}}",
+                                                "base": "<AIRTABLE_BASE_ID>",
+                                                "table": "<AIRTABLE_TABLE_ID>",
+                                                "record": {
+                                                    "<FLD_EVIDENCIAS>": "{{10.evidencias}}"
+                                                },
+                                                "typecast": false,
+                                                "useColumnId": false
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 4200,
+                                                    "y": 300
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 31,
+                                            "module": "http:MakeRequest",
+                                            "version": 4,
+                                            "parameters": {
+                                                "tlsType": "",
+                                                "authenticationType": "noAuth"
+                                            },
+                                            "filter": {
+                                                "name": "La reflexión exige actuar",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{9.accion.necesaria}}",
+                                                            "b": "true",
+                                                            "o": "text:equal"
+                                                        },
+                                                        {
+                                                            "a": "{{9.accion.contenido}}",
+                                                            "o": "exist"
+                                                        },
+                                                        {
+                                                            "a": "{{9.accion.accion}}",
+                                                            "o": "exist"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "url": "https://hook.eu1.make.com/<WEBHOOK_COMPROMETER>",
+                                                "method": "post",
+                                                "timeout": "120",
+                                                "contentType": "json",
+                                                "inputMethod": "jsonString",
+                                                "shareCookies": false,
+                                                "parseResponse": false,
+                                                "allowRedirects": true,
+                                                "stopOnHttpError": false,
+                                                "jsonStringBodyContent": "{\"token\": \"{{escapeJSON(1.token)}}\", \"acto\": \"DECISION\", \"agente\": \"{{1.agente}}\", \"chat\": \"{{1.chat_id}}\", \"accion\": \"{{escapeJSON(9.accion.accion)}}\", \"dia\": \"{{9.accion.dia}}\", \"hora\": \"{{9.accion.hora}}\", \"fin\": \"\", \"condicion\": \"{{escapeJSON(9.accion.condicion)}}\", \"simbolos\": \"{{escapeJSON(9.accion.simbolos)}}\", \"contenido\": \"{{escapeJSON(9.accion.contenido)}}\", \"origen\": \"reflexion\", \"nivel\": 1}",
+                                                "requestCompressedContent": true
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 3600,
+                                                    "y": 600
+                                                }
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 931,
+                                                    "module": "builtin:Ignore",
+                                                    "version": 1,
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 3600,
+                                                            "y": 750
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
         }
-      ]
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": [
+            {
+                "moduleIds": [
+                    31
+                ],
+                "content": "<p><strong>Conciencia de acción</strong></p><p>Si una conclusión exige que el agente haga algo que sabe hacer, la reflexión lo describe y aquí se manda a Comprometer como DECISION: un compromiso consigo mismo, que Comprometer valida con las mismas reglas. Reenvía el token con el que llegó la llamada.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    11
+                ],
+                "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (3) Reflexionar, módulo 11.</p><p>Destino: (2) Escribir.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    16
+                ],
+                "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (3) Reflexionar, módulo 16.</p><p>Destino: (4) Recuperar.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    1
+                ],
+                "content": "<p><strong>Webhook de (3) Reflexionar</strong></p><p>Origen: (2) Escribir (módulo 8).</p><p>Destino: este escenario.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            }
+        ]
     }
-  ],
-  "metadata": {
-    "instant": true,
-    "version": 1,
-    "scenario": {
-      "roundtrips": 1,
-      "maxErrors": 3,
-      "autoCommit": true,
-      "autoCommitTriggerLast": true,
-      "sequential": false,
-      "slots": null,
-      "confidential": false,
-      "dataloss": false,
-      "dlq": false,
-      "freshVariables": false
-    },
-    "designer": {
-      "orphans": []
-    },
-    "zone": "eu1.make.com",
-    "notes": [
-      {
-        "moduleIds": [
-          1
-        ],
-        "content": "<p><strong>Webhook de (3) Reflexionar</strong></p><p>Origen: (2) Escribir (módulo 8).</p><p>Destino: este escenario.</p>",
-        "isFilterNote": false,
-        "metadata": {
-          "color": "#9138FE"
-        }
-      },
-      {
-        "moduleIds": [
-          16
-        ],
-        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (3) Reflexionar, módulo 16.</p><p>Destino: (4) Recuperar.</p>",
-        "isFilterNote": false,
-        "metadata": {
-          "color": "#9138FE"
-        }
-      },
-      {
-        "moduleIds": [
-          11
-        ],
-        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (3) Reflexionar, módulo 11.</p><p>Destino: (2) Escribir.</p>",
-        "isFilterNote": false,
-        "metadata": {
-          "color": "#9138FE"
-        }
-      }
-    ]
-  }
 }

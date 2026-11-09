@@ -60,7 +60,7 @@ Los números entre paréntesis son los de esta documentación. En Make, cada esc
 | (8) Estudiar | [Human_proxy]:[Skills] (08/13) \| Estudiar |
 | (9) Interpelar | [Human_proxy]:[Skills] (09/13) \| Interpelar |
 | (7) Resumen del agente | [Human_proxy]:[Self] (10/13) \| Resumen del agente |
-| (10) Despertador | Despertador (11/13) |
+| (10) Despertador | [Human_proxy]:[Planning] (11/13) \| Despertador |
 | (12) Noticias | [Human_proxy]:[Skills] (12/13) \| Noticias |
 | (13) Cotizar | [Human_proxy]:[Skills] (13/13) \| Cotizar |
 | (15) Actuar | [Human_proxy]:[Ejecución] (14/16) \| Actuar |
@@ -161,8 +161,8 @@ Make no admite el módulo de respuesta de webhook en un escenario secuencial y d
 | (8) Estudiar | Inmediata | Paralelo | En los 5 módulos externos |
 | (9) Interpelar | Inmediata | Paralelo | En los 4 módulos externos |
 | (10) Despertador | Diaria, 5:00 (Europe/Madrid) | Paralelo | No |
-| (11) Cumplir | Cada 30 minutos, laborables de 8:00 a 20:30 (Europe/Madrid) | Paralelo | En todos sus módulos externos y de escritura |
-| (12) Noticias | Laborables, 8:00 y 16:00 (Europe/Madrid) | Paralelo | En los 6 módulos externos |
+| (11) Cumplir | Cada 30 minutos, laborables de 8:00 a 20:30 (Europe/Madrid) | Paralelo | En sus módulos externos y de escritura, salvo la búsqueda inicial (20) y las reprogramaciones y órdenes de estudiar (25, 43, 53 y 58) |
+| (12) Noticias | Laborables, 8:00 y 16:00 (Europe/Madrid) | Paralelo | En los 5 módulos externos que siguen al disparador |
 | (13) Cotizar | Inmediata | Paralelo | En la consulta a Yahoo Finance |
 | (14) Comprometer | Inmediata | Paralelo | No |
 | (15) Actuar · (16) Observar · (17) Refinar | Inmediata, desactivados | Paralelo | En todos sus módulos externos y de escritura |
@@ -174,14 +174,14 @@ Cada escenario lleva notas de Make en sus webhooks y en sus llamadas, con el ori
 
 | Webhook de destino | Lo llaman (escenario y módulo) |
 | --- | --- |
-| (2) Escribir | Gateway 4, Reflexionar 11, Estudiar 6, Cumplir 10, 45 y 64, Noticias 11, Enviar 4 |
+| (2) Escribir | Gateway 4, Reflexionar 11, Estudiar 6, Cumplir 10, 45 y 64, Noticias 11, Enviar 4, Observar 11 |
 | (3) Reflexionar | Escribir 8 |
-| (4) Recuperar | Reflexionar 16, Responder 2 y 10, Resumen 10, 12 y 14, Estudiar 4 |
+| (4) Recuperar | Reflexionar 16, Responder 2 y 10, Resumen 10, 12 y 14, Estudiar 4, Actuar 12 |
 | (6) Responder | Gateway 2 |
 | (7) Resumen del agente | Responder 9 |
 | (8) Estudiar | Gateway 15, Cumplir 62 |
-| (9) Interpelar | Estudiar 7, Cumplir 11 y 61 |
-| (13) Cotizar | Responder 23, Cumplir 50 y 63 |
+| (9) Interpelar | Estudiar 7, Cumplir 11 y 61, Actuar 23 |
+| (13) Cotizar | Responder 23, Cumplir 50 y 63, Actuar 10 |
 | (14) Comprometer | Responder 51, Reflexionar 31 |
 | (15) Actuar | Observar 12, Refinar 9 |
 | (16) Observar | Actuar 34 |
@@ -254,6 +254,8 @@ El Gateway recibe los mensajes de Telegram y Enviar manda las respuestas; los de
 | --- | --- | --- |
 | 1 | Telegram Bot · Watch Updates | Recibe los mensajes del bot |
 | filtro | Mensaje de texto (no comandos) | Solo pasa si `message.text` existe y no empieza por «/» |
+| 965 | Router | Separa al usuario identificado, por su ID de Telegram, del resto |
+| 967 | Telegram Bot · Send a Text Message | A quien no es el usuario identificado le dice que no lo es y no sigue |
 | 6 | Airtable · Search records | Mensajes del usuario en este chat en los últimos 10 minutos, hasta 10 |
 | 7 | Tools · Numeric aggregator | Los cuenta con `if(6.id; 1; 0)`, para que una búsqueda vacía cuente 0 |
 | 8 | Router | Ruta 1 si hay menos de 10 mensajes; ruta 2 si hay 10 o más |
@@ -1575,7 +1577,7 @@ El volumen total lo limita el plan de Airtable: 1.000 registros por base en Free
 
 ### Errores
 
-Make desactiva un escenario secuencial en cuanto una ejecución falla, y uno en paralelo tras varios errores seguidos. Estudiar, Interpelar, Cumplir y Enviar llevan un manejador Ignore en todos los módulos que pueden fallar, y el Gateway en todos menos el aviso 967. Noticias y Cotizar lo llevan en sus módulos externos, y Responder en los de sus rutas de percepción, cartera, cotizaciones y cálculo, de modo que un fallo ahí deja al agente sin ese dato pero no sin respuesta. Escribir, Reflexionar, Recuperar, el núcleo de Responder, el Resumen del agente, el Despertador y Comprometer no lo llevan, con estas consecuencias:
+Make desactiva un escenario secuencial en cuanto una ejecución falla, y uno en paralelo tras varios errores seguidos. Estudiar, Interpelar y Enviar llevan un manejador Ignore en todos los módulos que pueden fallar; el Gateway, en todos menos el aviso 967, y Cumplir, en todos menos su búsqueda inicial y cuatro escrituras en el almacén (sección 2). Noticias y Cotizar lo llevan en sus módulos externos, y Responder en los de sus rutas de percepción, cartera, cotizaciones y cálculo, de modo que un fallo ahí deja al agente sin ese dato pero no sin respuesta. Escribir, Reflexionar, Recuperar, el núcleo de Responder, el Resumen del agente, el Despertador y Comprometer no lo llevan, con estas consecuencias:
 
 1. Si Gemini o Airtable fallan durante Responder, el usuario no recibe respuesta; el Gateway sigue activo.
 2. Si Gemini devuelve la importancia con texto alrededor en la primera línea («Puntuación: 7»), la conversión de Airtable puede fallar y ese recuerdo se pierde.

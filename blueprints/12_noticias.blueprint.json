@@ -1,0 +1,410 @@
+{
+    "name": "[Human_proxy]:[Skills] (12/13) | Noticias",
+    "flow": [
+        {
+            "id": 1,
+            "module": "rss:TriggerNewArticle",
+            "version": 4,
+            "parameters": {
+                "url": "https://news.google.com/rss/search?q=(Ibex+OR+BCE+OR+%22bolsa+espa%C3%B1ola%22+OR+mercados)+(site:expansion.com+OR+site:cincodias.elpais.com+OR+site:eleconomista.es)+when:1d&hl=es&gl=ES&ceid=ES:es",
+                "gzip": true,
+                "include": [],
+                "password": "",
+                "username": "",
+                "maxResults": 20
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 2,
+            "module": "util:TextAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 1,
+                "rowSeparator": "\n"
+            },
+            "mapper": {
+                "value": "- {{1.title}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 3,
+            "module": "datastore:GetRecord",
+            "version": 1,
+            "parameters": {
+                "datastore": null
+            },
+            "mapper": {
+                "key": "perfil|Borja",
+                "returnWrapped": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 903,
+                    "module": "builtin:Ignore",
+                    "version": 1,
+                    "metadata": {
+                        "designer": {
+                            "x": 600,
+                            "y": 150
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "module": "airtable:ActionSearchRecords",
+            "version": 3,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "filter": {
+                "name": "Hay titulares y perfil",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{2.text}}",
+                            "o": "exist"
+                        },
+                        {
+                            "a": "{{3.resumen}}",
+                            "o": "exist"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "base": "<AIRTABLE_BASE_ID>",
+                "table": "<AIRTABLE_TABLE_ID>",
+                "fields": [
+                    "Chat_ID"
+                ],
+                "formula": "AND({Agente}=\"{{3.agente}}\", {Autor}=\"usuario\", {Chat_ID}!=\"GLOBAL\")",
+                "maxRecords": "1000",
+                "useColumnId": false,
+                "formulaField": "formula"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 904,
+                    "module": "builtin:Ignore",
+                    "version": 1,
+                    "metadata": {
+                        "designer": {
+                            "x": 900,
+                            "y": 150
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 5,
+            "module": "util:TextAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 4,
+                "rowSeparator": "\n"
+            },
+            "mapper": {
+                "value": "{{4.Chat_ID}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 6,
+            "module": "builtin:BasicFeeder",
+            "version": 1,
+            "parameters": {},
+            "filter": {
+                "name": "Hay chats",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{trim(5.text)}}",
+                            "o": "exist"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "array": "{{deduplicate(split(5.text; newline))}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1500,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 7,
+            "module": "datastore:GetRecord",
+            "version": 1,
+            "parameters": {
+                "datastore": null
+            },
+            "filter": {
+                "name": "Chat válido",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{6.value}}",
+                            "o": "exist"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "key": "{{3.agente}}|{{6.value}}",
+                "returnWrapped": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1800,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 907,
+                    "module": "builtin:Ignore",
+                    "version": 1,
+                    "metadata": {
+                        "designer": {
+                            "x": 1800,
+                            "y": 150
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 8,
+            "module": "gemini-ai:createACompletionGeminiPro",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "model": "gemini-3.8-flash",
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [
+                            {
+                                "text": "Titulares de prensa económica publicados en las últimas horas:\n{{2.text}}\n\nCartera e intereses de su interlocutor: {{ifempty(7.cartera; \"NO HAY CARTERA REGISTRADA\")}}\n\nSi hay cartera registrada, elige como máximo 3 titulares que afecten de forma concreta a alguna de sus posiciones o intereses, y para cada uno explica en tercera persona, en un máximo de 40 palabras, qué implica para esa cartera y en qué sentido.\nSi no hay cartera registrada, elige como máximo 1 titular, y solo si tiene un impacto general alto para un inversor particular en España, con su implicación en un máximo de 40 palabras.\nNo elijas titulares que no afecten de verdad; si ninguno lo hace, devuelve la lista vacía. Copia el titular tal como aparece, con su fuente.\nDevuelve exclusivamente un JSON: {\"noticias\": [{\"titular\": \"...\", \"implicacion\": \"...\"}]}",
+                                "type": "text"
+                            }
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "imageConfig": {},
+                    "responseSchema": "{\"type\": \"object\", \"properties\": {\"noticias\": {\"type\": \"array\", \"items\": {\"type\": \"object\", \"properties\": {\"titular\": {\"type\": \"string\"}, \"implicacion\": {\"type\": \"string\"}}, \"required\": [\"titular\", \"implicacion\"]}}}, \"required\": [\"noticias\"]}",
+                    "thinkingConfig": {},
+                    "responseMimeType": "application/json"
+                },
+                "system_instruction": {
+                    "parts": [
+                        {
+                            "text": "{{3.resumen}}"
+                        }
+                    ]
+                }
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2100,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 908,
+                    "module": "builtin:Ignore",
+                    "version": 1,
+                    "metadata": {
+                        "designer": {
+                            "x": 2100,
+                            "y": 150
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 9,
+            "module": "json:ParseJSON",
+            "version": 1,
+            "parameters": {
+                "type": ""
+            },
+            "mapper": {
+                "json": "{{8.result}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2400,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 909,
+                    "module": "builtin:Ignore",
+                    "version": 1,
+                    "metadata": {
+                        "designer": {
+                            "x": 2400,
+                            "y": 150
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 10,
+            "module": "builtin:BasicFeeder",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "array": "{{9.noticias}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2700,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 11,
+            "module": "http:MakeRequest",
+            "version": 4,
+            "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+            },
+            "filter": {
+                "name": "Noticia con implicación",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{10.titular}}",
+                            "o": "exist"
+                        },
+                        {
+                            "a": "{{10.implicacion}}",
+                            "o": "exist"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_ESCRIBIR>",
+                "method": "post",
+                "timeout": "120",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": true,
+                "jsonStringBodyContent": "{\"token\": \"<TOKEN>\", \"memoria\": \"{{3.agente}} leyó en prensa: «{{escapeJSON(10.titular)}}». {{escapeJSON(10.implicacion)}}\", \"tipo\": \"conocimiento\", \"agente\": \"{{3.agente}}\", \"chat_id\": \"{{6.value}}\", \"autor\": \"sistema\"}",
+                "requestCompressedContent": true
+            },
+            "metadata": {
+                "designer": {
+                    "x": 3000,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 911,
+                    "module": "builtin:Ignore",
+                    "version": 1,
+                    "metadata": {
+                        "designer": {
+                            "x": 3000,
+                            "y": 150
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": false,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": [
+            {
+                "moduleIds": [
+                    1
+                ],
+                "content": "<p><strong>Disparo programado</strong></p><p>Origen: la programación de Make, sobre un feed RSS de Google News.</p><p>Destino: este escenario, (12) Noticias.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    11
+                ],
+                "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (12) Noticias, módulo 11.</p><p>Destino: (2) Escribir.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            }
+        ]
+    }
+}

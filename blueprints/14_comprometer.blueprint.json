@@ -1,0 +1,780 @@
+{
+    "name": "[Human_proxy]:[Planning] (05/13) | Comprometer",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": null,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 3,
+            "module": "util:SetVariables",
+            "version": 1,
+            "parameters": {},
+            "filter": {
+                "name": "Token correcto",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{1.token}}",
+                            "b": "<TOKEN>",
+                            "o": "text:equal"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                    {
+                        "name": "cm_acto",
+                        "value": "{{upper(trim(ifempty(1.acto; \"DECISION\")))}}"
+                    },
+                    {
+                        "name": "cm_accion",
+                        "value": "{{lower(trim(1.accion))}}"
+                    },
+                    {
+                        "name": "cm_chat",
+                        "value": "{{trim(1.chat)}}"
+                    },
+                    {
+                        "name": "cm_contenido",
+                        "value": "{{trim(1.contenido)}}"
+                    },
+                    {
+                        "name": "cm_simbolos",
+                        "value": "{{upper(replace(trim(1.simbolos); \" \"; \"\"))}}"
+                    },
+                    {
+                        "name": "cm_condicion",
+                        "value": "{{trim(1.condicion)}}"
+                    },
+                    {
+                        "name": "cm_nivel_txt",
+                        "value": "{{ifempty(1.nivel; 0)}}"
+                    },
+                    {
+                        "name": "cm_texto",
+                        "value": "{{ifempty(1.dia; formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\"))}} {{ifempty(1.hora; if(1.dia; \"08:00\"; formatDate(now; \"HH:mm\"; \"Europe/Madrid\")))}}"
+                    },
+                    {
+                        "name": "cm_fin_txt",
+                        "value": "{{trim(1.fin)}} 20:30"
+                    },
+                    {
+                        "name": "cm_libera",
+                        "value": "{{replace(trim(1.libera); \" \"; \"\")}}"
+                    },
+                    {
+                        "name": "cm_repite",
+                        "value": "{{trim(1.repite)}}"
+                    },
+                    {
+                        "name": "cm_vetado_por",
+                        "value": "{{trim(1.vetado_por)}}"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 4,
+            "module": "util:SetVariables",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                    {
+                        "name": "cm_momento",
+                        "value": "{{if(contains(split(\"1,2,3,4,5\"; \",\"); formatDate(parseDate(3.cm_texto; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"d\"; \"Europe/Madrid\")); switch(switch(formatDate(parseDate(3.cm_texto; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"HH\"; \"Europe/Madrid\"); \"00\"; \"antes\"; \"01\"; \"antes\"; \"02\"; \"antes\"; \"03\"; \"antes\"; \"04\"; \"antes\"; \"05\"; \"antes\"; \"06\"; \"antes\"; \"07\"; \"antes\"; \"08\"; \"dentro\"; \"09\"; \"dentro\"; \"10\"; \"dentro\"; \"11\"; \"dentro\"; \"12\"; \"dentro\"; \"13\"; \"dentro\"; \"14\"; \"dentro\"; \"15\"; \"dentro\"; \"16\"; \"dentro\"; \"17\"; \"dentro\"; \"18\"; \"dentro\"; \"19\"; \"dentro\"; \"20\"; switch(formatDate(parseDate(3.cm_texto; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"mm\"; \"Europe/Madrid\"); \"00\"; \"dentro\"; \"01\"; \"dentro\"; \"02\"; \"dentro\"; \"03\"; \"dentro\"; \"04\"; \"dentro\"; \"05\"; \"dentro\"; \"06\"; \"dentro\"; \"07\"; \"dentro\"; \"08\"; \"dentro\"; \"09\"; \"dentro\"; \"10\"; \"dentro\"; \"11\"; \"dentro\"; \"12\"; \"dentro\"; \"13\"; \"dentro\"; \"14\"; \"dentro\"; \"15\"; \"dentro\"; \"16\"; \"dentro\"; \"17\"; \"dentro\"; \"18\"; \"dentro\"; \"19\"; \"dentro\"; \"20\"; \"dentro\"; \"21\"; \"dentro\"; \"22\"; \"dentro\"; \"23\"; \"dentro\"; \"24\"; \"dentro\"; \"25\"; \"dentro\"; \"26\"; \"dentro\"; \"27\"; \"dentro\"; \"28\"; \"dentro\"; \"29\"; \"dentro\"; \"30\"; \"dentro\"; \"despues\"); \"21\"; \"despues\"; \"22\"; \"despues\"; \"23\"; \"despues\"; \"despues\"); \"dentro\"; parseDate(3.cm_texto; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"antes\"; parseDate(formatDate(parseDate(3.cm_texto; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"YYYY-MM-DD [08:00]\"; \"Europe/Madrid\"); \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); parseDate(formatDate(addDays(parseDate(3.cm_texto; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); switch(formatDate(parseDate(3.cm_texto; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"d\"; \"Europe/Madrid\"); \"5\"; 3; \"6\"; 2; 1)); \"YYYY-MM-DD [08:00]\"; \"Europe/Madrid\"); \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\")); parseDate(formatDate(addDays(parseDate(3.cm_texto; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); switch(formatDate(parseDate(3.cm_texto; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"d\"; \"Europe/Madrid\"); \"5\"; 3; \"6\"; 2; 1)); \"YYYY-MM-DD [08:00]\"; \"Europe/Madrid\"); \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"))}}"
+                    },
+                    {
+                        "name": "cm_aplazado",
+                        "value": "{{if(contains(split(\"1,2,3,4,5\"; \",\"); formatDate(parseDate(3.cm_texto; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"d\"; \"Europe/Madrid\")); switch(switch(formatDate(parseDate(3.cm_texto; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"HH\"; \"Europe/Madrid\"); \"00\"; \"antes\"; \"01\"; \"antes\"; \"02\"; \"antes\"; \"03\"; \"antes\"; \"04\"; \"antes\"; \"05\"; \"antes\"; \"06\"; \"antes\"; \"07\"; \"antes\"; \"08\"; \"dentro\"; \"09\"; \"dentro\"; \"10\"; \"dentro\"; \"11\"; \"dentro\"; \"12\"; \"dentro\"; \"13\"; \"dentro\"; \"14\"; \"dentro\"; \"15\"; \"dentro\"; \"16\"; \"dentro\"; \"17\"; \"dentro\"; \"18\"; \"dentro\"; \"19\"; \"dentro\"; \"20\"; switch(formatDate(parseDate(3.cm_texto; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"mm\"; \"Europe/Madrid\"); \"00\"; \"dentro\"; \"01\"; \"dentro\"; \"02\"; \"dentro\"; \"03\"; \"dentro\"; \"04\"; \"dentro\"; \"05\"; \"dentro\"; \"06\"; \"dentro\"; \"07\"; \"dentro\"; \"08\"; \"dentro\"; \"09\"; \"dentro\"; \"10\"; \"dentro\"; \"11\"; \"dentro\"; \"12\"; \"dentro\"; \"13\"; \"dentro\"; \"14\"; \"dentro\"; \"15\"; \"dentro\"; \"16\"; \"dentro\"; \"17\"; \"dentro\"; \"18\"; \"dentro\"; \"19\"; \"dentro\"; \"20\"; \"dentro\"; \"21\"; \"dentro\"; \"22\"; \"dentro\"; \"23\"; \"dentro\"; \"24\"; \"dentro\"; \"25\"; \"dentro\"; \"26\"; \"dentro\"; \"27\"; \"dentro\"; \"28\"; \"dentro\"; \"29\"; \"dentro\"; \"30\"; \"dentro\"; \"despues\"); \"21\"; \"despues\"; \"22\"; \"despues\"; \"23\"; \"despues\"; \"despues\"); \"dentro\"; \"no\"; \"si\"); \"si\")}}"
+                    },
+                    {
+                        "name": "cm_dest",
+                        "value": "{{if(contains(split(\"informar,preguntar,abstenerse\"; \",\"); 3.cm_accion); switch(ifempty(3.cm_chat; \"GLOBAL\"); \"GLOBAL\"; \"\"; 3.cm_chat); \"\")}}"
+                    },
+                    {
+                        "name": "cm_con",
+                        "value": "{{switch(3.cm_acto; \"REQUEST\"; switch(ifempty(3.cm_chat; \"GLOBAL\"); \"GLOBAL\"; \"yo\"; 3.cm_chat); \"yo\")}}"
+                    },
+                    {
+                        "name": "cm_tipo",
+                        "value": "{{switch(3.cm_accion; \"agendar\"; \"DO\"; \"estudiar\"; \"DO\"; \"cotizar\"; \"DO\"; \"investigar\"; \"DO\"; \"informar\"; \"INFORM\"; \"preguntar\"; \"REQUEST\"; \"abstenerse\"; \"REFRAIN\"; \"\")}}"
+                    },
+                    {
+                        "name": "cm_sig",
+                        "value": "{{3.cm_accion}}|{{if(contains(split(\"informar,preguntar,abstenerse\"; \",\"); 3.cm_accion); switch(ifempty(3.cm_chat; \"GLOBAL\"); \"GLOBAL\"; \"\"; 3.cm_chat); \"\")}}|{{3.cm_contenido}}|{{if(if(3.cm_condicion; if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); \"si\"; \"\"); \"\"); \"#\"; \"\")}}{{if(if(3.cm_condicion; if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); \"si\"; \"\"); \"\"); 3.cm_condicion; first(split(3.cm_simbolos; \",\")))}}"
+                    },
+                    {
+                        "name": "cm_veto_sig",
+                        "value": "abstenerse|{{if(contains(split(\"informar,preguntar,abstenerse\"; \",\"); 3.cm_accion); switch(ifempty(3.cm_chat; \"GLOBAL\"); \"GLOBAL\"; \"\"; 3.cm_chat); \"\")}}|{{3.cm_accion}}|"
+                    },
+                    {
+                        "name": "cm_sig_c",
+                        "value": "§C§{{3.cm_accion}}|{{if(contains(split(\"informar,preguntar,abstenerse\"; \",\"); 3.cm_accion); switch(ifempty(3.cm_chat; \"GLOBAL\"); \"GLOBAL\"; \"\"; 3.cm_chat); \"\")}}|{{3.cm_contenido}}|{{if(if(3.cm_condicion; if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); \"si\"; \"\"); \"\"); \"#\"; \"\")}}{{if(if(3.cm_condicion; if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); \"si\"; \"\"); \"\"); 3.cm_condicion; first(split(3.cm_simbolos; \",\")))}}"
+                    },
+                    {
+                        "name": "cm_veto_sig_s",
+                        "value": "abstenerse|{{if(contains(split(\"informar,preguntar,abstenerse\"; \",\"); 3.cm_accion); switch(ifempty(3.cm_chat; \"GLOBAL\"); \"GLOBAL\"; \"\"; 3.cm_chat); \"\")}}|{{3.cm_accion}}|{{first(split(3.cm_simbolos; \",\"))}}"
+                    },
+                    {
+                        "name": "cm_repite_k",
+                        "value": "#{{3.cm_chat}}#{{3.cm_repite}}"
+                    },
+                    {
+                        "name": "cm_vetado_k",
+                        "value": "#{{3.cm_chat}}#{{3.cm_vetado_por}}"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 5,
+            "module": "util:SetVariables",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                    {
+                        "name": "cm_fin",
+                        "value": "{{if(1.fin; parseDate(3.cm_fin_txt; \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); \"\"; if(3.cm_condicion; addDays(4.cm_momento; 7); if(contains(split(\"estudiar\"; \",\"); 3.cm_accion); parseDate(formatDate(4.cm_momento; \"YYYY-MM-DD [20:30]\"; \"Europe/Madrid\"); \"YYYY-MM-DD HH:mm\"; \"Europe/Madrid\"); \"\"))))}}"
+                    },
+                    {
+                        "name": "cm_cuando",
+                        "value": "{{formatDate(4.cm_momento; \"DD/MM [a las] HH:mm\"; \"Europe/Madrid\")}}"
+                    },
+                    {
+                        "name": "cm_linea",
+                        "value": "{{if(3.cm_condicion; \"(IF (B «\"; \"\")}}{{3.cm_condicion}}{{if(3.cm_condicion; \"») \"; \"\")}}({{4.cm_tipo}} {{formatDate(4.cm_momento; \"DD/MM HH:mm\"; \"Europe/Madrid\")}} {{3.cm_accion}}{{if(4.cm_dest; \" chat:\"; \"\")}}{{4.cm_dest}} «{{3.cm_contenido}}»){{if(3.cm_condicion; \")\"; \"\")}}"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 6,
+            "module": "datastore:SearchRecord",
+            "version": 1,
+            "parameters": {
+                "limit": 100,
+                "datastore": null,
+                "continueWhenNoRes": true
+            },
+            "mapper": {
+                "sort": [
+                    {
+                        "key": "momento",
+                        "order": 1
+                    }
+                ],
+                "filter": [
+                    [
+                        {
+                            "a": "agente",
+                            "b": "{{1.agente}}",
+                            "o": "text:equal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "cumplido",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "fallido",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "liberado",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "caducado",
+                            "o": "text:notequal"
+                        }
+                    ]
+                ],
+                "mappAbleLimit": ""
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 7,
+            "module": "builtin:BasicRouter",
+            "version": 1,
+            "mapper": null,
+            "metadata": {
+                "designer": {
+                    "x": 1500,
+                    "y": 0
+                }
+            },
+            "routes": [
+                {
+                    "flow": [
+                        {
+                            "id": 20,
+                            "module": "datastore:AddRecord",
+                            "version": 1,
+                            "parameters": {
+                                "datastore": null
+                            },
+                            "filter": {
+                                "name": "Liberar: lo que señala Percibir, lo que pide el usuario por valor o lo que choca con un veto nuevo",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{3.cm_acto}}",
+                                            "b": "UNREQUEST",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "{{if(if(contains(split(3.cm_libera; \",\"); 6.key); if(contains(split(3.cm_chat; \",\"); ifempty(6.data.destinatario; \"-\")); \"si\"; if(contains(split(3.cm_chat; \",\"); ifempty(6.data.comprometido_con; \"-\")); \"si\"; \"\")); \"\"); \"si\"; if(if(3.cm_libera; \"\"; if(contains(split(\"UNREQUEST\"; \",\"); 3.cm_acto); if(3.cm_simbolos; if(if(contains(split(3.cm_chat; \",\"); ifempty(6.data.destinatario; \"-\")); \"si\"; if(contains(split(3.cm_chat; \",\"); ifempty(6.data.comprometido_con; \"-\")); \"si\"; \"\")); if(contains(split(if(3.cm_accion; if(contains(split(3.cm_accion; \",\"); 6.data.accion); \"si\"; \"no\"); \"si\"); \",\"); \"si\"); if(contains(split(if(3.cm_simbolos; if(contains(upper(ifempty(6.data.simbolos; \"\")); first(split(3.cm_simbolos; \",\"))); \"si\"; \"no\"); \"si\"); \",\"); \"si\"); \"si\"; \"\"); \"\"); \"\"); \"\"); \"\")); \"si\"; if(if(contains(split(\"REQUEST\"; \",\"); 3.cm_acto); if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); if(3.cm_condicion; \"\"; if(contains(split(3.cm_chat; \",\"); ifempty(6.data.destinatario; \"-\")); if(contains(split(3.cm_contenido; \",\"); 6.data.accion); if(contains(split(if(3.cm_simbolos; if(contains(upper(ifempty(6.data.simbolos; \"\")); first(split(3.cm_simbolos; \",\"))); \"si\"; \"no\"); \"si\"); \",\"); \"si\"); \"si\"; \"\"); \"\"); \"\")); \"\"); \"\"); \"si\"; \"no\")))}}",
+                                            "b": "si",
+                                            "o": "text:equal"
+                                        }
+                                    ],
+                                    [
+                                        {
+                                            "a": "{{3.cm_acto}}",
+                                            "b": "REQUEST",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "{{3.cm_accion}}",
+                                            "b": "abstenerse",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "{{if(if(contains(split(3.cm_libera; \",\"); 6.key); if(contains(split(3.cm_chat; \",\"); ifempty(6.data.destinatario; \"-\")); \"si\"; if(contains(split(3.cm_chat; \",\"); ifempty(6.data.comprometido_con; \"-\")); \"si\"; \"\")); \"\"); \"si\"; if(if(3.cm_libera; \"\"; if(contains(split(\"UNREQUEST\"; \",\"); 3.cm_acto); if(3.cm_simbolos; if(if(contains(split(3.cm_chat; \",\"); ifempty(6.data.destinatario; \"-\")); \"si\"; if(contains(split(3.cm_chat; \",\"); ifempty(6.data.comprometido_con; \"-\")); \"si\"; \"\")); if(contains(split(if(3.cm_accion; if(contains(split(3.cm_accion; \",\"); 6.data.accion); \"si\"; \"no\"); \"si\"); \",\"); \"si\"); if(contains(split(if(3.cm_simbolos; if(contains(upper(ifempty(6.data.simbolos; \"\")); first(split(3.cm_simbolos; \",\"))); \"si\"; \"no\"); \"si\"); \",\"); \"si\"); \"si\"; \"\"); \"\"); \"\"); \"\"); \"\")); \"si\"; if(if(contains(split(\"REQUEST\"; \",\"); 3.cm_acto); if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); if(3.cm_condicion; \"\"; if(contains(split(3.cm_chat; \",\"); ifempty(6.data.destinatario; \"-\")); if(contains(split(3.cm_contenido; \",\"); 6.data.accion); if(contains(split(if(3.cm_simbolos; if(contains(upper(ifempty(6.data.simbolos; \"\")); first(split(3.cm_simbolos; \",\"))); \"si\"; \"no\"); \"si\"); \",\"); \"si\"); \"si\"; \"\"); \"\"); \"\")); \"\"); \"\"); \"si\"; \"no\")))}}",
+                                            "b": "si",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "key": "{{6.key}}",
+                                "data": {
+                                    "fin": "{{6.data.fin}}",
+                                    "linea": "{{6.data.linea}}",
+                                    "nivel": "{{6.data.nivel}}",
+                                    "accion": "{{6.data.accion}}",
+                                    "agente": "{{6.data.agente}}",
+                                    "creado": "{{6.data.creado}}",
+                                    "estado": "liberado",
+                                    "origen": "{{6.data.origen}}",
+                                    "momento": "{{6.data.momento}}",
+                                    "intentos": "{{6.data.intentos}}",
+                                    "simbolos": "{{6.data.simbolos}}",
+                                    "condicion": "{{6.data.condicion}}",
+                                    "contenido": "{{6.data.contenido}}",
+                                    "destinatario": "{{6.data.destinatario}}",
+                                    "comprometido_con": "{{6.data.comprometido_con}}"
+                                },
+                                "overwrite": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1800,
+                                    "y": -400
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 21,
+                            "module": "util:TextAggregator",
+                            "version": 1,
+                            "parameters": {
+                                "feeder": 6,
+                                "rowSeparator": "\n"
+                            },
+                            "filter": {
+                                "name": "Es una liberación o un veto",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{3.cm_acto}}",
+                                            "b": "UNREQUEST",
+                                            "o": "text:equal"
+                                        }
+                                    ],
+                                    [
+                                        {
+                                            "a": "{{3.cm_acto}}",
+                                            "b": "REQUEST",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "{{3.cm_accion}}",
+                                            "b": "abstenerse",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "value": "{{if(if(contains(split(3.cm_libera; \",\"); 6.key); if(contains(split(3.cm_chat; \",\"); ifempty(6.data.destinatario; \"-\")); \"si\"; if(contains(split(3.cm_chat; \",\"); ifempty(6.data.comprometido_con; \"-\")); \"si\"; \"\")); \"\"); 6.data.linea; if(if(3.cm_libera; \"\"; if(contains(split(\"UNREQUEST\"; \",\"); 3.cm_acto); if(3.cm_simbolos; if(if(contains(split(3.cm_chat; \",\"); ifempty(6.data.destinatario; \"-\")); \"si\"; if(contains(split(3.cm_chat; \",\"); ifempty(6.data.comprometido_con; \"-\")); \"si\"; \"\")); if(contains(split(if(3.cm_accion; if(contains(split(3.cm_accion; \",\"); 6.data.accion); \"si\"; \"no\"); \"si\"); \",\"); \"si\"); if(contains(split(if(3.cm_simbolos; if(contains(upper(ifempty(6.data.simbolos; \"\")); first(split(3.cm_simbolos; \",\"))); \"si\"; \"no\"); \"si\"); \",\"); \"si\"); \"si\"; \"\"); \"\"); \"\"); \"\"); \"\")); 6.data.linea; if(if(contains(split(\"REQUEST\"; \",\"); 3.cm_acto); if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); if(3.cm_condicion; \"\"; if(contains(split(3.cm_chat; \",\"); ifempty(6.data.destinatario; \"-\")); if(contains(split(3.cm_contenido; \",\"); 6.data.accion); if(contains(split(if(3.cm_simbolos; if(contains(upper(ifempty(6.data.simbolos; \"\")); first(split(3.cm_simbolos; \",\"))); \"si\"; \"no\"); \"si\"); \",\"); \"si\"); \"si\"; \"\"); \"\"); \"\")); \"\"); \"\"); 6.data.linea; \"\")))}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1800,
+                                    "y": -150
+                                }
+                            }
+                        },
+                        {
+                            "id": 23,
+                            "module": "util:SetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "liberados",
+                                "scope": "roundtrip",
+                                "value": "{{join(remove(split(21.text; newline); \"\"); \" / \")}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1950,
+                                    "y": 0
+                                }
+                            }
+                        },
+                        {
+                            "id": 22,
+                            "module": "gateway:WebhookRespond",
+                            "version": 1,
+                            "parameters": {},
+                            "filter": {
+                                "name": "Es una liberación",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{3.cm_acto}}",
+                                            "b": "UNREQUEST",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "body": "{{if(trim(21.text); \"LIBERADO. Borja queda libre de estos compromisos con este chat: \"; \"NADA. Borja no tenía ningún compromiso así con este chat.\")}}{{join(remove(split(21.text; newline); \"\"); \" / \")}}",
+                                "status": "200",
+                                "headers": []
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 2100,
+                                    "y": -150
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 30,
+                            "module": "util:TextAggregator",
+                            "version": 1,
+                            "parameters": {
+                                "feeder": 6,
+                                "rowSeparator": "\n"
+                            },
+                            "filter": {
+                                "name": "Es un compromiso nuevo",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{3.cm_acto}}",
+                                            "b": "UNREQUEST",
+                                            "o": "text:notequal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "value": "{{if(contains(split(3.cm_chat; \",\"); ifempty(6.data.destinatario; ifempty(6.data.comprometido_con; \"-\"))); if(contains(split(\"abstenerse\"; \",\"); 6.data.accion); \"\"; \"§C§\"); \"\")}}{{6.data.accion}}|{{6.data.destinatario}}|{{6.data.contenido}}|{{if(if(6.data.condicion; if(contains(split(\"abstenerse\"; \",\"); 6.data.accion); \"si\"; \"\"); \"\"); \"#\"; \"\")}}{{if(if(6.data.condicion; if(contains(split(\"abstenerse\"; \",\"); 6.data.accion); \"si\"; \"\"); \"\"); 6.data.condicion; first(split(upper(ifempty(6.data.simbolos; \"\")); \",\")))}}{{newline}}#{{ifempty(6.data.destinatario; 6.data.comprometido_con)}}#{{6.key}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1800,
+                                    "y": 150
+                                }
+                            }
+                        },
+                        {
+                            "id": 38,
+                            "module": "util:GetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "liberados"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1950,
+                                    "y": 300
+                                }
+                            }
+                        },
+                        {
+                            "id": 31,
+                            "module": "util:SetVariables",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "scope": "roundtrip",
+                                "variables": [
+                                    {
+                                        "name": "cm_ok_accion",
+                                        "value": "{{if(contains(split(switch(3.cm_acto; \"REQUEST\"; \"informar,preguntar,estudiar,investigar,cotizar,abstenerse\"; \"DECISION\"; \"agendar,informar,preguntar,estudiar,investigar,cotizar,abstenerse\"; \"-\"); \",\"); 3.cm_accion); \"si\"; \"no\")}}"
+                                    },
+                                    {
+                                        "name": "cm_ok_dest",
+                                        "value": "{{if(contains(split(\"informar,preguntar,abstenerse\"; \",\"); 3.cm_accion); if(4.cm_dest; \"si\"; \"no\"); \"si\")}}"
+                                    },
+                                    {
+                                        "name": "cm_ok_simb",
+                                        "value": "{{if(contains(split(\"cotizar\"; \",\"); 3.cm_accion); if(3.cm_simbolos; \"si\"; \"no\"); \"si\")}}"
+                                    },
+                                    {
+                                        "name": "cm_ok_nivel",
+                                        "value": "{{if(contains(split(\"0,1,2\"; \",\"); 3.cm_nivel_txt); \"si\"; \"no\")}}"
+                                    },
+                                    {
+                                        "name": "cm_ok_cont",
+                                        "value": "{{if(3.cm_contenido; \"si\"; \"no\")}}"
+                                    },
+                                    {
+                                        "name": "cm_dup",
+                                        "value": "{{if(contains(split(30.text; newline); 4.cm_sig); \"si\"; if(contains(split(30.text; newline); 4.cm_sig_c); \"si\"; if(3.cm_repite; if(contains(split(30.text; newline); 4.cm_repite_k); \"si\"; \"no\"); \"no\")))}}"
+                                    },
+                                    {
+                                        "name": "cm_vetado",
+                                        "value": "{{if(contains(split(\"informar,preguntar\"; \",\"); 3.cm_accion); if(contains(split(30.text; newline); 4.cm_veto_sig); \"si\"; if(contains(split(30.text; newline); 4.cm_veto_sig_s); \"si\"; if(3.cm_vetado_por; if(contains(split(30.text; newline); 4.cm_vetado_k); \"si\"; \"no\"); \"no\"))); \"no\")}}"
+                                    },
+                                    {
+                                        "name": "cm_lleno",
+                                        "value": "{{if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); \"no\"; if(get(split(30.text; \"§C§\"); 11); \"si\"; \"no\"))}}"
+                                    }
+                                ]
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 2100,
+                                    "y": 150
+                                }
+                            }
+                        },
+                        {
+                            "id": 32,
+                            "module": "builtin:BasicRouter",
+                            "version": 1,
+                            "mapper": null,
+                            "metadata": {
+                                "designer": {
+                                    "x": 2400,
+                                    "y": 150
+                                }
+                            },
+                            "routes": [
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 33,
+                                            "module": "datastore:AddRecord",
+                                            "version": 1,
+                                            "parameters": {
+                                                "datastore": null
+                                            },
+                                            "filter": {
+                                                "name": "Lo sabe hacer, no está vetado ni duplicado y hay sitio",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{31.cm_ok_accion}}",
+                                                            "b": "si",
+                                                            "o": "text:equal"
+                                                        },
+                                                        {
+                                                            "a": "{{31.cm_ok_dest}}",
+                                                            "b": "si",
+                                                            "o": "text:equal"
+                                                        },
+                                                        {
+                                                            "a": "{{31.cm_ok_simb}}",
+                                                            "b": "si",
+                                                            "o": "text:equal"
+                                                        },
+                                                        {
+                                                            "a": "{{31.cm_ok_nivel}}",
+                                                            "b": "si",
+                                                            "o": "text:equal"
+                                                        },
+                                                        {
+                                                            "a": "{{31.cm_ok_cont}}",
+                                                            "b": "si",
+                                                            "o": "text:equal"
+                                                        },
+                                                        {
+                                                            "a": "{{31.cm_dup}}",
+                                                            "b": "no",
+                                                            "o": "text:equal"
+                                                        },
+                                                        {
+                                                            "a": "{{31.cm_vetado}}",
+                                                            "b": "no",
+                                                            "o": "text:equal"
+                                                        },
+                                                        {
+                                                            "a": "{{31.cm_lleno}}",
+                                                            "b": "no",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "key": "",
+                                                "data": {
+                                                    "fin": "{{5.cm_fin}}",
+                                                    "linea": "{{5.cm_linea}}",
+                                                    "nivel": "{{3.cm_nivel_txt}}",
+                                                    "accion": "{{3.cm_accion}}",
+                                                    "agente": "{{1.agente}}",
+                                                    "creado": "{{now}}",
+                                                    "estado": "pendiente",
+                                                    "origen": "{{ifempty(1.origen; lower(3.cm_acto))}}",
+                                                    "momento": "{{4.cm_momento}}",
+                                                    "intentos": "0",
+                                                    "simbolos": "{{3.cm_simbolos}}",
+                                                    "condicion": "{{3.cm_condicion}}",
+                                                    "contenido": "{{3.cm_contenido}}",
+                                                    "destinatario": "{{4.cm_dest}}",
+                                                    "comprometido_con": "{{4.cm_con}}"
+                                                },
+                                                "overwrite": false
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2700,
+                                                    "y": 0
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "id": 34,
+                                            "module": "gateway:WebhookRespond",
+                                            "version": 1,
+                                            "parameters": {},
+                                            "mapper": {
+                                                "body": "{{if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); \"ACEPTADO. Borja se compromete a no hacerlo: \"; \"ACEPTADO. Borja se ha comprometido: \")}}{{5.cm_linea}}.{{if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); \"\"; if(3.cm_condicion; \" Vigilará la condición desde el \"; \" Lo hará el \"))}}{{if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); \"\"; 5.cm_cuando)}}{{if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); \"\"; if(contains(split(4.cm_aplazado; \",\"); \"si\"); \", el primer momento en que trabaja, porque lo pedido cae fuera de su horario (laborables de 8:00 a 20:30)\"; \"\"))}}{{if(contains(split(\"abstenerse\"; \",\"); 3.cm_accion); \"\"; if(3.cm_condicion; \" y lo hará en cuanto se cumpla.\"; \".\"))}}{{if(5.cm_fin; \" Vale hasta el \"; \"\")}}{{if(5.cm_fin; formatDate(5.cm_fin; \"DD/MM\"; \"Europe/Madrid\"); \"\")}}{{if(5.cm_fin; \".\"; \"\")}}{{if(38.liberados; \" Deja sin efecto: \"; \"\")}}{{38.liberados}}",
+                                                "status": "200",
+                                                "headers": []
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 3000,
+                                                    "y": 0
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 35,
+                                            "module": "gateway:WebhookRespond",
+                                            "version": 1,
+                                            "parameters": {},
+                                            "filter": {
+                                                "name": "No se cumple alguna regla",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{31.cm_ok_accion}}",
+                                                            "b": "no",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ],
+                                                    [
+                                                        {
+                                                            "a": "{{31.cm_ok_dest}}",
+                                                            "b": "no",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ],
+                                                    [
+                                                        {
+                                                            "a": "{{31.cm_ok_simb}}",
+                                                            "b": "no",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ],
+                                                    [
+                                                        {
+                                                            "a": "{{31.cm_ok_nivel}}",
+                                                            "b": "no",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ],
+                                                    [
+                                                        {
+                                                            "a": "{{31.cm_ok_cont}}",
+                                                            "b": "no",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ],
+                                                    [
+                                                        {
+                                                            "a": "{{31.cm_dup}}",
+                                                            "b": "si",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ],
+                                                    [
+                                                        {
+                                                            "a": "{{31.cm_vetado}}",
+                                                            "b": "si",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ],
+                                                    [
+                                                        {
+                                                            "a": "{{31.cm_lleno}}",
+                                                            "b": "si",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "body": "RECHAZADO. Borja no se compromete porque {{if(contains(split(31.cm_ok_accion; \",\"); \"no\"); \"no sabe hacer eso o no le corresponde\"; if(contains(split(31.cm_ok_cont; \",\"); \"no\"); \"no está claro qué tiene que hacer\"; if(contains(split(31.cm_ok_dest; \",\"); \"no\"); \"no sabe a quién tendría que escribir\"; if(contains(split(31.cm_ok_simb; \",\"); \"no\"); \"no sabe qué valores tiene que consultar\"; if(contains(split(31.cm_ok_nivel; \",\"); \"no\"); \"sería una cadena de compromisos demasiado larga\"; if(contains(split(31.cm_vetado; \",\"); \"si\"); \"se comprometió a no hacerlo\"; if(contains(split(31.cm_dup; \",\"); \"si\"); \"ya lo tenía apuntado\"; \"tiene demasiados compromisos pendientes\")))))))}}.",
+                                                "status": "200",
+                                                "headers": []
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2700,
+                                                    "y": 300
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": [
+            {
+                "moduleIds": [
+                    1
+                ],
+                "content": "<p><strong>Reglas de compromiso (Shoham)</strong></p><p>Recibe un acto: REQUEST (lo que pide el usuario, desde Percibir, en Responder), UNREQUEST (el usuario libera a Borja) o DECISION (Borja se compromete consigo mismo, desde Reflexionar). Campos: agente, chat, acto, accion, dia, hora, fin, condicion, simbolos, contenido, libera, repite, vetado_por, origen y nivel. Responde siempre con la decisión en texto.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    4
+                ],
+                "content": "<p><strong>Horario como capacidad</strong></p><p>Si el momento pedido cae fuera de los laborables de 8:00 a 20:30, lo pasa al primer momento en que Borja trabaja y lo dice en la respuesta.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    20
+                ],
+                "content": "<p><strong>Liberar</strong></p><p>Marca como liberados los compromisos de este chat que señala Percibir por su clave. Sin claves, solo libera por valor (símbolo). Un veto nuevo libera además lo pendiente que choca con él: la misma acción hacia este chat y, si el veto es de un valor, con ese valor. Nunca borra.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    33
+                ],
+                "content": "<p><strong>Alta</strong></p><p>Solo si la acción es una capacidad, tiene lo que necesita, el nivel es 2 o menos, no está vetada ni repetida y hay menos de 10 pendientes con este chat (sin contar los vetos). Los vetos van por acción, por valor o, si son de un tema, por la clave que señala Percibir, y no caducan salvo que el usuario diga hasta cuándo.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            }
+        ]
+    }
+}

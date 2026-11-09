@@ -1,0 +1,1088 @@
+{
+    "name": "[Human_proxy]:[Ejecución] (14/16) | Actuar",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": null,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 2,
+            "module": "datastore:GetRecord",
+            "version": 1,
+            "parameters": {
+                "datastore": null
+            },
+            "filter": {
+                "name": "Token correcto",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{1.token}}",
+                            "b": "<TOKEN>",
+                            "o": "text:equal"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "key": "perfil|{{1.agente}}",
+                "returnWrapped": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 902,
+                    "module": "builtin:Ignore",
+                    "version": 1,
+                    "metadata": {
+                        "designer": {
+                            "x": 300,
+                            "y": 150
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "module": "gemini-ai:createACompletionGeminiPro",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "model": "gemini-3.8-flash",
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [
+                            {
+                                "text": "Eres {{1.agente}} y estás cumpliendo un compromiso. Decide el siguiente paso: uno solo.\n\nCompromiso: «{{1.contenido}}»\nComprometido con: {{1.comprometido_con}}\nDestinatario de los mensajes: {{ifempty(1.destinatario; \"ninguno\")}}\nCondición: {{ifempty(1.condicion; \"ninguna\")}}\nValores implicados: {{ifempty(1.simbolos; \"ninguno\")}}\nCriterio de cumplimiento: «{{ifempty(1.criterio; 1.contenido)}}»\n\nPasos ya dados y su resultado:\n{{ifempty(1.historial; \"ninguno\")}}\n\nCorrección que debes aplicar: {{ifempty(1.correccion; \"ninguna\")}}\n\nHerramientas:\ncotizar: consulta precios en Yahoo Finance. Rellena simbolos, símbolos de Yahoo Finance separados por comas (por ejemplo ITX.MC, SAN.MC, ^IBEX).\nrecordar: busca en tu memoria. Rellena consulta.\nbuscar: busca en internet. Rellena consulta.\ncalcular: hace una cuenta exacta. Rellena codigo con JavaScript que termine en return { resultado: ... }, sin acceso a red ni a ficheros.\ncartera: lee la cartera del destinatario. No necesita parámetros.\npreguntar: hace una pregunta al destinatario. Rellena texto con la pregunta.\nenviar: escribe un mensaje al destinatario. Rellena texto con el mensaje, con tu voz, en un máximo de 80 palabras, con las cifras exactas y sin firma.\n\nReglas: si hay condición, comprueba primero con datos si se cumple. Usa preguntar o enviar solo si hay destinatario y solo cuando tengas lo necesario. No inventes datos: usa solo los de los pasos anteriores. Deja vacíos los campos que no use la herramienta. En motivo, explica en una frase por qué das este paso.\n\nAhora es {{formatDate(now; \"YYYY-MM-DD [a las] HH:mm\"; \"Europe/Madrid\")}}, hora de Madrid.",
+                                "type": "text"
+                            }
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "imageConfig": {},
+                    "responseSchema": "{\"type\":\"object\",\"properties\":{\"herramienta\":{\"type\":\"string\",\"enum\":[\"cotizar\",\"recordar\",\"buscar\",\"calcular\",\"cartera\",\"preguntar\",\"enviar\"]},\"simbolos\":{\"type\":\"string\"},\"consulta\":{\"type\":\"string\"},\"codigo\":{\"type\":\"string\"},\"texto\":{\"type\":\"string\"},\"motivo\":{\"type\":\"string\"}},\"required\":[\"herramienta\",\"simbolos\",\"consulta\",\"codigo\",\"texto\",\"motivo\"]}",
+                    "thinkingConfig": {},
+                    "responseMimeType": "application/json"
+                },
+                "system_instruction": {
+                    "parts": [
+                        {
+                            "text": "{{2.resumen}}"
+                        }
+                    ]
+                }
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 903,
+                    "module": "builtin:Ignore",
+                    "version": 1,
+                    "metadata": {
+                        "designer": {
+                            "x": 600,
+                            "y": 150
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "module": "builtin:BasicRouter",
+            "version": 1,
+            "mapper": null,
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 0
+                }
+            },
+            "routes": [
+                {
+                    "flow": [
+                        {
+                            "id": 10,
+                            "module": "http:MakeRequest",
+                            "version": 4,
+                            "parameters": {
+                                "tlsType": "",
+                                "authenticationType": "noAuth"
+                            },
+                            "filter": {
+                                "name": "Herramienta: cotizar",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{3.result.herramienta}}",
+                                            "b": "cotizar",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "url": "https://hook.eu1.make.com/<WEBHOOK_COTIZAR>",
+                                "method": "post",
+                                "timeout": "40",
+                                "contentType": "json",
+                                "inputMethod": "jsonString",
+                                "shareCookies": false,
+                                "parseResponse": false,
+                                "allowRedirects": true,
+                                "stopOnHttpError": false,
+                                "jsonStringBodyContent": "{\"token\": \"{{escapeJSON(1.token)}}\", \"simbolos\": \"{{escapeJSON(3.result.simbolos)}}\"}",
+                                "requestCompressedContent": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": -900
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 910,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1200,
+                                            "y": -750
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 11,
+                            "module": "util:SetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "resultado",
+                                "scope": "roundtrip",
+                                "value": "{{toString(10.data)}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": -900
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 12,
+                            "module": "http:MakeRequest",
+                            "version": 4,
+                            "parameters": {
+                                "tlsType": "",
+                                "authenticationType": "noAuth"
+                            },
+                            "filter": {
+                                "name": "Herramienta: recordar",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{3.result.herramienta}}",
+                                            "b": "recordar",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "url": "https://hook.eu1.make.com/<WEBHOOK_RECUPERAR>",
+                                "method": "post",
+                                "timeout": "40",
+                                "contentType": "json",
+                                "inputMethod": "jsonString",
+                                "shareCookies": false,
+                                "parseResponse": false,
+                                "allowRedirects": true,
+                                "stopOnHttpError": false,
+                                "jsonStringBodyContent": "{\"token\": \"{{escapeJSON(1.token)}}\", \"agente\": \"{{escapeJSON(1.agente)}}\", \"chat_id\": \"{{escapeJSON(ifempty(1.destinatario; \"GLOBAL\"))}}\", \"consulta\": \"{{escapeJSON(3.result.consulta)}}\", \"k\": 5}",
+                                "requestCompressedContent": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": -600
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 912,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1200,
+                                            "y": -450
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 13,
+                            "module": "util:SetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "resultado",
+                                "scope": "roundtrip",
+                                "value": "{{toString(12.data)}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": -600
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 14,
+                            "module": "gemini-ai:createACompletionGeminiPro",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "filter": {
+                                "name": "Herramienta: buscar",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{3.result.herramienta}}",
+                                            "b": "buscar",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "model": "gemini-3.8-flash",
+                                "contents": [
+                                    {
+                                        "role": "user",
+                                        "parts": [
+                                            {
+                                                "text": "{{3.result.consulta}}\n\nResponde en un máximo de 80 palabras, con las cifras exactas y la fuente entre paréntesis al final. Si no encuentras información fiable, responde únicamente: NO_ENCONTRADO",
+                                                "type": "text"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "generationConfig": {
+                                    "imageConfig": {},
+                                    "thinkingConfig": {}
+                                },
+                                "system_instruction": {
+                                    "parts": [
+                                        {
+                                            "text": "{{2.resumen}}"
+                                        }
+                                    ]
+                                },
+                                "google_search_context": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": -300
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 914,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1200,
+                                            "y": -150
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 15,
+                            "module": "util:SetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "resultado",
+                                "scope": "roundtrip",
+                                "value": "{{14.result}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": -300
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 16,
+                            "module": "code:ExecuteCode",
+                            "version": 1,
+                            "parameters": {},
+                            "filter": {
+                                "name": "Herramienta: calcular, con código seguro",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{3.result.herramienta}}",
+                                            "b": "calcular",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "{{3.result.codigo}}",
+                                            "o": "exist"
+                                        },
+                                        {
+                                            "a": "{{3.result.codigo}}",
+                                            "b": "require|import|process|fetch|eval|Function|global|constructor|prototype|__|while\\s*\\(\\s*true|for\\s*\\(\\s*;\\s*;|setTimeout|setInterval|XMLHttp|Buffer|child_|\\bfs\\b|http|module|exports|async|await|Promise",
+                                            "o": "text:notpattern"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "input": [],
+                                "language": "javascript",
+                                "inputFormat": "string",
+                                "dependencies": [],
+                                "codeStringJavascript": "{{3.result.codigo}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": 0
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 916,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1200,
+                                            "y": 150
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 17,
+                            "module": "util:SetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "resultado",
+                                "scope": "roundtrip",
+                                "value": "{{16.result.resultado}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": 0
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 18,
+                            "module": "datastore:GetRecord",
+                            "version": 1,
+                            "parameters": {
+                                "datastore": null
+                            },
+                            "filter": {
+                                "name": "Herramienta: cartera",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{3.result.herramienta}}",
+                                            "b": "cartera",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "key": "{{1.agente}}|{{1.destinatario}}",
+                                "returnWrapped": false
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": 300
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 918,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1200,
+                                            "y": 450
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 19,
+                            "module": "util:SetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "resultado",
+                                "scope": "roundtrip",
+                                "value": "{{ifempty(18.cartera; \"SIN CARTERA REGISTRADA\")}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": 300
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 20,
+                            "module": "datastore:SearchRecord",
+                            "version": 1,
+                            "parameters": {
+                                "limit": 20,
+                                "datastore": null,
+                                "continueWhenNoRes": true
+                            },
+                            "filter": {
+                                "name": "Herramienta: preguntar, con destinatario",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{3.result.herramienta}}",
+                                            "b": "preguntar",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "{{1.destinatario}}",
+                                            "o": "exist"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "sort": [],
+                                "filter": [
+                                    [
+                                        {
+                                            "a": "agente",
+                                            "b": "{{1.agente}}",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "accion",
+                                            "b": "abstenerse",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "destinatario",
+                                            "b": "{{1.destinatario}}",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "contenido",
+                                            "b": "preguntar",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "estado",
+                                            "b": "cumplido",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "estado",
+                                            "b": "fallido",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "estado",
+                                            "b": "liberado",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "estado",
+                                            "b": "caducado",
+                                            "o": "text:notequal"
+                                        }
+                                    ]
+                                ],
+                                "mappAbleLimit": ""
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": 600
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 920,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1200,
+                                            "y": 750
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 21,
+                            "module": "util:TextAggregator",
+                            "version": 1,
+                            "parameters": {
+                                "feeder": 20,
+                                "rowSeparator": "\n"
+                            },
+                            "mapper": {
+                                "value": "{{if(20.data.condicion; \"TEMA\"; ifempty(first(split(upper(ifempty(20.data.simbolos; \"\")); \",\")); \"TODO\"))}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": 600
+                                }
+                            }
+                        },
+                        {
+                            "id": 25,
+                            "module": "builtin:BasicRouter",
+                            "version": 1,
+                            "mapper": null,
+                            "metadata": {
+                                "designer": {
+                                    "x": 1800,
+                                    "y": 600
+                                }
+                            },
+                            "routes": [
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 22,
+                                            "module": "util:SetVariable2",
+                                            "version": 1,
+                                            "parameters": {},
+                                            "filter": {
+                                                "name": "Vetado",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{if(contains(split(21.text; newline); \"TODO\"); \"si\"; if(1.simbolos; if(contains(split(21.text; newline); first(split(upper(1.simbolos); \",\"))); \"si\"; \"no\"); \"no\"))}}",
+                                                            "b": "si",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "name": "resultado",
+                                                "scope": "roundtrip",
+                                                "value": "VETADO: el destinatario ha pedido que no le pregunte."
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2100,
+                                                    "y": 500
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 23,
+                                            "module": "http:MakeRequest",
+                                            "version": 4,
+                                            "parameters": {
+                                                "tlsType": "",
+                                                "authenticationType": "noAuth"
+                                            },
+                                            "filter": {
+                                                "name": "No vetado",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{if(contains(split(21.text; newline); \"TODO\"); \"si\"; if(1.simbolos; if(contains(split(21.text; newline); first(split(upper(1.simbolos); \",\"))); \"si\"; \"no\"); \"no\"))}}",
+                                                            "b": "no",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "url": "https://hook.eu1.make.com/<WEBHOOK_INTERPELAR>",
+                                                "method": "post",
+                                                "timeout": "40",
+                                                "contentType": "json",
+                                                "inputMethod": "jsonString",
+                                                "shareCookies": false,
+                                                "parseResponse": false,
+                                                "allowRedirects": true,
+                                                "stopOnHttpError": false,
+                                                "jsonStringBodyContent": "{\"token\": \"{{escapeJSON(1.token)}}\", \"agente\": \"{{escapeJSON(1.agente)}}\", \"chat_id\": \"{{escapeJSON(1.destinatario)}}\", \"descripcion\": \"{{escapeJSON(2.resumen)}}\", \"motivo\": \"{{escapeJSON(3.result.texto)}}\", \"contexto\": \"Compromiso de {{escapeJSON(1.agente)}}: {{escapeJSON(1.contenido)}}\"}",
+                                                "requestCompressedContent": true
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2100,
+                                                    "y": 700
+                                                }
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 923,
+                                                    "module": "builtin:Ignore",
+                                                    "version": 1,
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 2100,
+                                                            "y": 850
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "id": 24,
+                                            "module": "util:SetVariable2",
+                                            "version": 1,
+                                            "parameters": {},
+                                            "mapper": {
+                                                "name": "resultado",
+                                                "scope": "roundtrip",
+                                                "value": "{{toString(23.data)}}"
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2400,
+                                                    "y": 700
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 26,
+                            "module": "datastore:SearchRecord",
+                            "version": 1,
+                            "parameters": {
+                                "limit": 20,
+                                "datastore": null,
+                                "continueWhenNoRes": true
+                            },
+                            "filter": {
+                                "name": "Herramienta: enviar, con destinatario",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{3.result.herramienta}}",
+                                            "b": "enviar",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "{{1.destinatario}}",
+                                            "o": "exist"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "sort": [],
+                                "filter": [
+                                    [
+                                        {
+                                            "a": "agente",
+                                            "b": "{{1.agente}}",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "accion",
+                                            "b": "abstenerse",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "destinatario",
+                                            "b": "{{1.destinatario}}",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "contenido",
+                                            "b": "informar",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "estado",
+                                            "b": "cumplido",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "estado",
+                                            "b": "fallido",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "estado",
+                                            "b": "liberado",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "estado",
+                                            "b": "caducado",
+                                            "o": "text:notequal"
+                                        }
+                                    ]
+                                ],
+                                "mappAbleLimit": ""
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": 1000
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 926,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1200,
+                                            "y": 1150
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 27,
+                            "module": "util:TextAggregator",
+                            "version": 1,
+                            "parameters": {
+                                "feeder": 26,
+                                "rowSeparator": "\n"
+                            },
+                            "mapper": {
+                                "value": "{{if(26.data.condicion; \"TEMA\"; ifempty(first(split(upper(ifempty(26.data.simbolos; \"\")); \",\")); \"TODO\"))}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": 1000
+                                }
+                            }
+                        },
+                        {
+                            "id": 32,
+                            "module": "builtin:BasicRouter",
+                            "version": 1,
+                            "mapper": null,
+                            "metadata": {
+                                "designer": {
+                                    "x": 1800,
+                                    "y": 1000
+                                }
+                            },
+                            "routes": [
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 28,
+                                            "module": "util:SetVariable2",
+                                            "version": 1,
+                                            "parameters": {},
+                                            "filter": {
+                                                "name": "Vetado",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{if(contains(split(27.text; newline); \"TODO\"); \"si\"; if(1.simbolos; if(contains(split(27.text; newline); first(split(upper(1.simbolos); \",\"))); \"si\"; \"no\"); \"no\"))}}",
+                                                            "b": "si",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "name": "resultado",
+                                                "scope": "roundtrip",
+                                                "value": "VETADO: el destinatario ha pedido que no le avise."
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2100,
+                                                    "y": 900
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 29,
+                                            "module": "http:MakeRequest",
+                                            "version": 4,
+                                            "parameters": {
+                                                "tlsType": "",
+                                                "authenticationType": "noAuth"
+                                            },
+                                            "filter": {
+                                                "name": "No vetado",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{if(contains(split(27.text; newline); \"TODO\"); \"si\"; if(1.simbolos; if(contains(split(27.text; newline); first(split(upper(1.simbolos); \",\"))); \"si\"; \"no\"); \"no\"))}}",
+                                                            "b": "no",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "url": "https://hook.eu1.make.com/<WEBHOOK_ENVIAR>",
+                                                "method": "post",
+                                                "timeout": "40",
+                                                "contentType": "json",
+                                                "inputMethod": "jsonString",
+                                                "shareCookies": false,
+                                                "parseResponse": false,
+                                                "allowRedirects": true,
+                                                "stopOnHttpError": false,
+                                                "jsonStringBodyContent": "{\"token\": \"{{escapeJSON(1.token)}}\", \"texto\": \"{{escapeJSON(3.result.texto)}}\", \"memoria\": \"{{escapeJSON(1.agente)}} le escribió por iniciativa propia: «{{escapeJSON(3.result.texto)}}»\", \"tipo\": \"observacion\", \"agente\": \"{{escapeJSON(1.agente)}}\", \"chat_id\": \"{{escapeJSON(1.destinatario)}}\", \"autor\": \"agente\", \"nivel\": \"{{escapeJSON(1.nivel)}}\"}",
+                                                "requestCompressedContent": true
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2100,
+                                                    "y": 1100
+                                                }
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 929,
+                                                    "module": "builtin:Ignore",
+                                                    "version": 1,
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 2100,
+                                                            "y": 1250
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "id": 30,
+                                            "module": "util:SetVariable2",
+                                            "version": 1,
+                                            "parameters": {},
+                                            "mapper": {
+                                                "name": "resultado",
+                                                "scope": "roundtrip",
+                                                "value": "{{toString(29.data)}}"
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2400,
+                                                    "y": 1100
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 33,
+                            "module": "util:GetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "resultado"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": 1400
+                                }
+                            }
+                        },
+                        {
+                            "id": 34,
+                            "module": "http:MakeRequest",
+                            "version": 4,
+                            "parameters": {
+                                "tlsType": "",
+                                "authenticationType": "noAuth"
+                            },
+                            "mapper": {
+                                "url": "https://hook.eu1.make.com/<WEBHOOK_OBSERVAR>",
+                                "method": "post",
+                                "timeout": "40",
+                                "contentType": "json",
+                                "inputMethod": "jsonString",
+                                "shareCookies": false,
+                                "parseResponse": false,
+                                "allowRedirects": true,
+                                "stopOnHttpError": false,
+                                "jsonStringBodyContent": "{\"token\": \"{{escapeJSON(1.token)}}\", \"clave\": \"{{escapeJSON(1.clave)}}\", \"agente\": \"{{escapeJSON(1.agente)}}\", \"comprometido_con\": \"{{escapeJSON(1.comprometido_con)}}\", \"destinatario\": \"{{escapeJSON(1.destinatario)}}\", \"contenido\": \"{{escapeJSON(1.contenido)}}\", \"criterio\": \"{{escapeJSON(1.criterio)}}\", \"condicion\": \"{{escapeJSON(1.condicion)}}\", \"simbolos\": \"{{escapeJSON(1.simbolos)}}\", \"origen\": \"{{escapeJSON(1.origen)}}\", \"nivel\": \"{{escapeJSON(1.nivel)}}\", \"paso\": \"{{escapeJSON(1.paso)}}\", \"correcciones\": \"{{escapeJSON(1.correcciones)}}\", \"historial\": \"{{escapeJSON(1.historial)}}\", \"correccion\": \"\", \"herramienta\": \"{{escapeJSON(3.result.herramienta)}}\", \"parametros\": \"{{escapeJSON(3.result.simbolos)}}{{escapeJSON(3.result.consulta)}}\", \"motivo_paso\": \"{{escapeJSON(3.result.motivo)}}\", \"resultado\": \"{{escapeJSON(33.resultado)}}\"}",
+                                "requestCompressedContent": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": 1400
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 934,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1500,
+                                            "y": 1550
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": [
+            {
+                "moduleIds": [
+                    1
+                ],
+                "content": "<p><strong>Actuar</strong></p><p>Recibe un compromiso vencido (de Cumplir) o el siguiente paso (de Observar o Refinar). Gemini elige un solo paso con una herramienta y Actuar lo ejecuta. El resultado va siempre a Observar. Desactivado hasta terminar la ejecución.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    3
+                ],
+                "content": "<p><strong>Un paso</strong></p><p>Herramientas: cotizar, recordar, buscar, calcular, cartera, preguntar y enviar. Preguntar y enviar solo van al destinatario del compromiso y respetan sus vetos.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    34
+                ],
+                "content": "<p><strong>A Observar</strong></p><p>Reenvía el token recibido, el compromiso, el historial y el resultado del paso.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            }
+        ]
+    }
+}

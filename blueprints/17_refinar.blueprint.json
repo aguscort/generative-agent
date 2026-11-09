@@ -1,0 +1,676 @@
+{
+    "name": "[Human_proxy]:[Ejecución] (16/16) | Refinar",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": null,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 2,
+            "module": "util:SetVariables",
+            "version": 1,
+            "parameters": {},
+            "filter": {
+                "name": "Token correcto",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{1.token}}",
+                            "b": "<TOKEN>",
+                            "o": "text:equal"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                    {
+                        "name": "rf_corr_sig",
+                        "value": "{{parseNumber(ifempty(1.correcciones; \"0\"); \".\") + 1}}"
+                    },
+                    {
+                        "name": "rf_paso_sig",
+                        "value": "{{parseNumber(ifempty(1.paso; \"1\"); \".\") + 1}}"
+                    },
+                    {
+                        "name": "rf_hist",
+                        "value": "{{1.historial}}{{newline}}Fallo: {{1.motivo}}"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 3,
+            "module": "builtin:BasicRouter",
+            "version": 1,
+            "mapper": null,
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 0
+                }
+            },
+            "routes": [
+                {
+                    "flow": [
+                        {
+                            "id": 4,
+                            "module": "datastore:GetRecord",
+                            "version": 1,
+                            "parameters": {
+                                "datastore": null
+                            },
+                            "filter": {
+                                "name": "Sin margen: 2 correcciones o 5 pasos",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{parseNumber(ifempty(1.correcciones; \"0\"); \".\")}}",
+                                            "b": "2",
+                                            "o": "number:greaterorequal"
+                                        }
+                                    ],
+                                    [
+                                        {
+                                            "a": "{{parseNumber(ifempty(1.paso; \"1\"); \".\")}}",
+                                            "b": "5",
+                                            "o": "number:greaterorequal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "key": "{{1.clave}}",
+                                "returnWrapped": false
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 900,
+                                    "y": -300
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 904,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 900,
+                                            "y": -150
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 5,
+                            "module": "datastore:AddRecord",
+                            "version": 1,
+                            "parameters": {
+                                "datastore": null
+                            },
+                            "mapper": {
+                                "key": "{{1.clave}}",
+                                "data": {
+                                    "fin": "{{4.fin}}",
+                                    "linea": "{{4.linea}}",
+                                    "nivel": "{{ifempty(4.nivel; 0)}}",
+                                    "accion": "{{4.accion}}",
+                                    "agente": "{{4.agente}}",
+                                    "creado": "{{4.creado}}",
+                                    "estado": "fallido",
+                                    "origen": "{{4.origen}}",
+                                    "momento": "{{4.momento}}",
+                                    "intentos": "{{ifempty(4.intentos; 0)}}",
+                                    "simbolos": "{{4.simbolos}}",
+                                    "condicion": "{{4.condicion}}",
+                                    "contenido": "{{4.contenido}}",
+                                    "destinatario": "{{4.destinatario}}",
+                                    "comprometido_con": "{{4.comprometido_con}}"
+                                },
+                                "overwrite": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": -300
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 905,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1200,
+                                            "y": -150
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 6,
+                            "module": "datastore:AddRecord",
+                            "version": 1,
+                            "parameters": {
+                                "datastore": null
+                            },
+                            "filter": {
+                                "name": "Era una promesa a un chat y no es ya un aviso",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{4.comprometido_con}}",
+                                            "b": "yo",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "{{4.origen}}",
+                                            "b": "cumplir:",
+                                            "o": "text:notcontain"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "key": "",
+                                "data": {
+                                    "fin": "",
+                                    "linea": "(INFORM {{formatDate(now; \"DD/MM HH:mm\"; \"Europe/Madrid\")}} informar chat:{{ifempty(4.destinatario; 4.comprometido_con)}} «Decir a su interlocutor que no ha podido cumplir este compromiso»)",
+                                    "nivel": "{{parseNumber(ifempty(4.nivel; \"0\"); \".\") + 1}}",
+                                    "accion": "informar",
+                                    "agente": "{{4.agente}}",
+                                    "creado": "{{now}}",
+                                    "estado": "pendiente",
+                                    "origen": "cumplir:fallido",
+                                    "momento": "{{now}}",
+                                    "intentos": "0",
+                                    "simbolos": "",
+                                    "condicion": "",
+                                    "contenido": "Decir a su interlocutor que no ha podido cumplir este compromiso: «{{4.contenido}}»",
+                                    "destinatario": "{{ifempty(4.destinatario; 4.comprometido_con)}}",
+                                    "comprometido_con": "{{ifempty(4.destinatario; 4.comprometido_con)}}"
+                                },
+                                "overwrite": false
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": -300
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 906,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1500,
+                                            "y": -150
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 7,
+                            "module": "gemini-ai:createACompletionGeminiPro",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "filter": {
+                                "name": "Queda margen",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{parseNumber(ifempty(1.correcciones; \"0\"); \".\")}}",
+                                            "b": "2",
+                                            "o": "number:less"
+                                        },
+                                        {
+                                            "a": "{{parseNumber(ifempty(1.paso; \"1\"); \".\")}}",
+                                            "b": "5",
+                                            "o": "number:less"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "model": "gemini-3.8-flash",
+                                "contents": [
+                                    {
+                                        "role": "user",
+                                        "parts": [
+                                            {
+                                                "text": "{{1.agente}} intenta cumplir este compromiso y algo ha fallado.\nCompromiso: «{{1.contenido}}»\nCriterio de cumplimiento: «{{ifempty(1.criterio; 1.contenido)}}»\nDestinatario: {{ifempty(1.destinatario; \"ninguno\")}}\n\nPasos dados y sus resultados:\n{{1.historial}}\n\nFallo: {{1.motivo}}\nCorrecciones ya intentadas: {{ifempty(1.correcciones; \"0\")}} de 2.\n\nDecide:\ncorregir: el fallo tiene arreglo ahora. En instruccion, di exactamente qué hacer en el siguiente paso: otro símbolo, otra búsqueda, otra herramienta o preguntar al destinatario el dato que falta.\naplazar: conviene volver a intentarlo más tarde, por ejemplo porque el dato aún no está publicado. En minutos, cuántos, entre 30 y 240.\nfallido: no tiene arreglo.\nDeja vacíos los campos que no correspondan.",
+                                                "type": "text"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "generationConfig": {
+                                    "imageConfig": {},
+                                    "responseSchema": "{\"type\":\"object\",\"properties\":{\"decision\":{\"type\":\"string\",\"enum\":[\"corregir\",\"aplazar\",\"fallido\"]},\"instruccion\":{\"type\":\"string\"},\"minutos\":{\"type\":\"string\"}},\"required\":[\"decision\",\"instruccion\",\"minutos\"]}",
+                                    "thinkingConfig": {},
+                                    "responseMimeType": "application/json"
+                                },
+                                "system_instruction": {
+                                    "parts": [
+                                        {
+                                            "text": "Decides cómo corregir el plan de un agente que no ha conseguido cumplir un compromiso. Respondes solo con el JSON pedido."
+                                        }
+                                    ]
+                                }
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 900,
+                                    "y": 300
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 907,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 900,
+                                            "y": 450
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 8,
+                            "module": "builtin:BasicRouter",
+                            "version": 1,
+                            "mapper": null,
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": 300
+                                }
+                            },
+                            "routes": [
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 9,
+                                            "module": "http:MakeRequest",
+                                            "version": 4,
+                                            "parameters": {
+                                                "tlsType": "",
+                                                "authenticationType": "noAuth"
+                                            },
+                                            "filter": {
+                                                "name": "Decisión: corregir",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{7.result.decision}}",
+                                                            "b": "corregir",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "url": "https://hook.eu1.make.com/<WEBHOOK_ACTUAR>",
+                                                "method": "post",
+                                                "timeout": "40",
+                                                "contentType": "json",
+                                                "inputMethod": "jsonString",
+                                                "shareCookies": false,
+                                                "parseResponse": false,
+                                                "allowRedirects": true,
+                                                "stopOnHttpError": false,
+                                                "jsonStringBodyContent": "{\"token\": \"{{escapeJSON(1.token)}}\", \"clave\": \"{{escapeJSON(1.clave)}}\", \"agente\": \"{{escapeJSON(1.agente)}}\", \"comprometido_con\": \"{{escapeJSON(1.comprometido_con)}}\", \"destinatario\": \"{{escapeJSON(1.destinatario)}}\", \"contenido\": \"{{escapeJSON(1.contenido)}}\", \"criterio\": \"{{escapeJSON(1.criterio)}}\", \"condicion\": \"{{escapeJSON(1.condicion)}}\", \"simbolos\": \"{{escapeJSON(1.simbolos)}}\", \"origen\": \"{{escapeJSON(1.origen)}}\", \"nivel\": \"{{escapeJSON(1.nivel)}}\", \"paso\": \"{{2.rf_paso_sig}}\", \"correcciones\": \"{{2.rf_corr_sig}}\", \"historial\": \"{{escapeJSON(2.rf_hist)}}\", \"correccion\": \"{{escapeJSON(7.result.instruccion)}}\"}",
+                                                "requestCompressedContent": true
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 1500,
+                                                    "y": 0
+                                                }
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 909,
+                                                    "module": "builtin:Ignore",
+                                                    "version": 1,
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 1500,
+                                                            "y": 150
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 10,
+                                            "module": "datastore:GetRecord",
+                                            "version": 1,
+                                            "parameters": {
+                                                "datastore": null
+                                            },
+                                            "filter": {
+                                                "name": "Decisión: aplazar",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{7.result.decision}}",
+                                                            "b": "aplazar",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "key": "{{1.clave}}",
+                                                "returnWrapped": false
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 1500,
+                                                    "y": 300
+                                                }
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 910,
+                                                    "module": "builtin:Ignore",
+                                                    "version": 1,
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 1500,
+                                                            "y": 450
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "id": 11,
+                                            "module": "datastore:AddRecord",
+                                            "version": 1,
+                                            "parameters": {
+                                                "datastore": null
+                                            },
+                                            "mapper": {
+                                                "key": "{{1.clave}}",
+                                                "data": {
+                                                    "fin": "{{10.fin}}",
+                                                    "linea": "{{10.linea}}",
+                                                    "nivel": "{{ifempty(10.nivel; 0)}}",
+                                                    "accion": "{{10.accion}}",
+                                                    "agente": "{{10.agente}}",
+                                                    "creado": "{{10.creado}}",
+                                                    "estado": "pendiente",
+                                                    "origen": "{{10.origen}}",
+                                                    "momento": "{{addMinutes(now; parseNumber(ifempty(7.result.minutos; \"60\"); \".\"))}}",
+                                                    "intentos": "0",
+                                                    "simbolos": "{{10.simbolos}}",
+                                                    "condicion": "{{10.condicion}}",
+                                                    "contenido": "{{10.contenido}}",
+                                                    "destinatario": "{{10.destinatario}}",
+                                                    "comprometido_con": "{{10.comprometido_con}}"
+                                                },
+                                                "overwrite": true
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 1800,
+                                                    "y": 300
+                                                }
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 911,
+                                                    "module": "builtin:Ignore",
+                                                    "version": 1,
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 1800,
+                                                            "y": 450
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 12,
+                                            "module": "datastore:GetRecord",
+                                            "version": 1,
+                                            "parameters": {
+                                                "datastore": null
+                                            },
+                                            "filter": {
+                                                "name": "Decisión: fallido",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{7.result.decision}}",
+                                                            "b": "fallido",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "key": "{{1.clave}}",
+                                                "returnWrapped": false
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 1500,
+                                                    "y": 600
+                                                }
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 912,
+                                                    "module": "builtin:Ignore",
+                                                    "version": 1,
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 1500,
+                                                            "y": 750
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "id": 13,
+                                            "module": "datastore:AddRecord",
+                                            "version": 1,
+                                            "parameters": {
+                                                "datastore": null
+                                            },
+                                            "mapper": {
+                                                "key": "{{1.clave}}",
+                                                "data": {
+                                                    "fin": "{{12.fin}}",
+                                                    "linea": "{{12.linea}}",
+                                                    "nivel": "{{ifempty(12.nivel; 0)}}",
+                                                    "accion": "{{12.accion}}",
+                                                    "agente": "{{12.agente}}",
+                                                    "creado": "{{12.creado}}",
+                                                    "estado": "fallido",
+                                                    "origen": "{{12.origen}}",
+                                                    "momento": "{{12.momento}}",
+                                                    "intentos": "{{ifempty(12.intentos; 0)}}",
+                                                    "simbolos": "{{12.simbolos}}",
+                                                    "condicion": "{{12.condicion}}",
+                                                    "contenido": "{{12.contenido}}",
+                                                    "destinatario": "{{12.destinatario}}",
+                                                    "comprometido_con": "{{12.comprometido_con}}"
+                                                },
+                                                "overwrite": true
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 1800,
+                                                    "y": 600
+                                                }
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 913,
+                                                    "module": "builtin:Ignore",
+                                                    "version": 1,
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 1800,
+                                                            "y": 750
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "id": 14,
+                                            "module": "datastore:AddRecord",
+                                            "version": 1,
+                                            "parameters": {
+                                                "datastore": null
+                                            },
+                                            "filter": {
+                                                "name": "Era una promesa a un chat y no es ya un aviso",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{12.comprometido_con}}",
+                                                            "b": "yo",
+                                                            "o": "text:notequal"
+                                                        },
+                                                        {
+                                                            "a": "{{12.origen}}",
+                                                            "b": "cumplir:",
+                                                            "o": "text:notcontain"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "key": "",
+                                                "data": {
+                                                    "fin": "",
+                                                    "linea": "(INFORM {{formatDate(now; \"DD/MM HH:mm\"; \"Europe/Madrid\")}} informar chat:{{ifempty(12.destinatario; 12.comprometido_con)}} «Decir a su interlocutor que no ha podido cumplir este compromiso»)",
+                                                    "nivel": "{{parseNumber(ifempty(12.nivel; \"0\"); \".\") + 1}}",
+                                                    "accion": "informar",
+                                                    "agente": "{{12.agente}}",
+                                                    "creado": "{{now}}",
+                                                    "estado": "pendiente",
+                                                    "origen": "cumplir:fallido",
+                                                    "momento": "{{now}}",
+                                                    "intentos": "0",
+                                                    "simbolos": "",
+                                                    "condicion": "",
+                                                    "contenido": "Decir a su interlocutor que no ha podido cumplir este compromiso: «{{12.contenido}}»",
+                                                    "destinatario": "{{ifempty(12.destinatario; 12.comprometido_con)}}",
+                                                    "comprometido_con": "{{ifempty(12.destinatario; 12.comprometido_con)}}"
+                                                },
+                                                "overwrite": false
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2100,
+                                                    "y": 600
+                                                }
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 914,
+                                                    "module": "builtin:Ignore",
+                                                    "version": 1,
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 2100,
+                                                            "y": 750
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": [
+            {
+                "moduleIds": [
+                    1
+                ],
+                "content": "<p><strong>Refinar</strong></p><p>Recibe un paso fallido de Observar. Si ya lleva 2 correcciones o 5 pasos, da el compromiso por fallido. Si no, Gemini decide: corregir (vuelve a Actuar con una instrucción), aplazar o fallido. Si falla una promesa a un chat, crea el compromiso de avisarle. Desactivado hasta terminar la ejecución.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            }
+        ]
+    }
+}

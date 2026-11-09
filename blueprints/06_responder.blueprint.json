@@ -1,438 +1,1401 @@
 {
-  "name": "[Human_proxy] (6/9) | Responder",
-  "flow": [
-    {
-      "id": 1,
-      "module": "gateway:CustomWebHook",
-      "version": 1,
-      "parameters": {
-        "hook": null,
-        "maxResults": 1
-      },
-      "mapper": {},
-      "metadata": {
-        "designer": {
-          "x": 0,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 9,
-      "module": "http:MakeRequest",
-      "version": 4,
-      "parameters": {
-        "tlsType": "",
-        "authenticationType": "noAuth"
-      },
-      "mapper": {
-        "url": "https://hook.eu1.make.com/<WEBHOOK_RESUMEN>",
-        "method": "post",
-        "timeout": "30",
-        "contentType": "json",
-        "inputMethod": "jsonString",
-        "shareCookies": false,
-        "parseResponse": true,
-        "allowRedirects": true,
-        "stopOnHttpError": false,
-        "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"modo\": \"{{ifempty(1.modo; \"OFF\")}}\"}",
-        "requestCompressedContent": true
-      },
-      "metadata": {
-        "designer": {
-          "x": 300,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 2,
-      "module": "http:MakeRequest",
-      "version": 4,
-      "parameters": {
-        "tlsType": "",
-        "authenticationType": "noAuth"
-      },
-      "mapper": {
-        "url": "https://hook.eu1.make.com/<WEBHOOK_RECUPERAR>",
-        "method": "post",
-        "timeout": "60",
-        "contentType": "json",
-        "inputMethod": "jsonString",
-        "shareCookies": false,
-        "parseResponse": true,
-        "allowRedirects": true,
-        "stopOnHttpError": true,
-        "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"consulta\": \"{{escapeJSON(1.mensaje)}}\", \"k\": 10}",
-        "requestCompressedContent": true
-      },
-      "metadata": {
-        "designer": {
-          "x": 600,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 12,
-      "module": "datastore:GetRecord",
-      "version": 1,
-      "parameters": {
-        "datastore": null
-      },
-      "mapper": {
-        "key": "rel|{{1.agente}}|{{1.chat_id}}",
-        "returnWrapped": false
-      },
-      "metadata": {
-        "designer": {
-          "x": 900,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 3,
-      "module": "airtable:ActionSearchRecords",
-      "version": 3,
-      "parameters": {
-        "__IMTCONN__": null
-      },
-      "mapper": {
-        "base": "<AIRTABLE_BASE_ID>",
-        "sort": [
-          {
-            "field": "Creado",
-            "direction": "desc"
-          }
-        ],
-        "table": "<AIRTABLE_TABLE_ID>",
-        "fields": [
-          "Memoria",
-          "Autor"
-        ],
-        "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"{{1.chat_id}}\", {Tipo}=\"observacion\")",
-        "maxRecords": "12",
-        "useColumnId": false,
-        "formulaField": "formula"
-      },
-      "metadata": {
-        "designer": {
-          "x": 1200,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 4,
-      "module": "util:TextAggregator",
-      "version": 1,
-      "parameters": {
-        "feeder": 3,
-        "rowSeparator": "\n"
-      },
-      "mapper": {
-        "value": "- [{{3.Autor}}] {{3.Memoria}}"
-      },
-      "metadata": {
-        "designer": {
-          "x": 1500,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 7,
-      "module": "airtable:ActionSearchRecords",
-      "version": 3,
-      "parameters": {
-        "__IMTCONN__": null
-      },
-      "mapper": {
-        "base": "<AIRTABLE_BASE_ID>",
-        "sort": [
-          {
-            "field": "Plan_inicio",
-            "direction": "desc"
-          }
-        ],
-        "table": "<AIRTABLE_TABLE_ID>",
-        "fields": [
-          "Memoria"
-        ],
-        "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"GLOBAL\", {Tipo}=\"plan\", IS_BEFORE({Plan_inicio}, DATEADD(NOW(), 1, 'minutes')), IS_AFTER(DATEADD({Plan_inicio}, {Plan_duracion_min}, 'minutes'), NOW()))",
-        "maxRecords": "1",
-        "useColumnId": false,
-        "formulaField": "formula"
-      },
-      "metadata": {
-        "designer": {
-          "x": 1800,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 8,
-      "module": "util:TextAggregator",
-      "version": 1,
-      "parameters": {
-        "feeder": 7,
-        "rowSeparator": "\n"
-      },
-      "mapper": {
-        "value": "{{7.Memoria}}"
-      },
-      "metadata": {
-        "designer": {
-          "x": 2100,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 5,
-      "module": "gemini-ai:createACompletionGeminiPro",
-      "version": 1,
-      "parameters": {
-        "__IMTCONN__": null
-      },
-      "mapper": {
-        "model": "gemini-3.8-flash",
-        "contents": [
-          {
-            "role": "user",
-            "parts": [
-              {
-                "text": "Son las {{formatDate(now; \"HH:mm [del] DD/MM/YYYY\"; \"Europe/Madrid\")}}.\n\nLo que {{1.agente}} tiene planificado para este momento: {{ifempty(8.text; \"nada en concreto\")}}\n\nLo que {{1.agente}} sabe de {{ifempty(1.usuario; \"su interlocutor\")}} y de su relación: {{ifempty(12.resumen; \"todavía no hay un resumen; guíate por el historial\")}}\n\nResumen del contexto relevante de la memoria de {{1.agente}} (ordenado por relevancia):\n{{2.data.texto}}\n\nHistorial reciente de la conversación (del más reciente al más antiguo):\n{{4.text}}\n\n{{ifempty(1.usuario; \"El interlocutor\")}} le dice a {{1.agente}}: {{1.mensaje}}\n\n¿Cómo respondería {{1.agente}}? Escribe únicamente su respuesta, sin comillas ni prefijos.",
-                "type": "text"
-              }
+    "name": "[Human_proxy]:[Skills] (06/13) | Responder",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": null,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 1650
+                }
+            }
+        },
+        {
+            "id": 9,
+            "module": "http:MakeRequest",
+            "version": 4,
+            "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+            },
+            "filter": {
+                "name": "Token correcto",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{1.token}}",
+                            "b": "<TOKEN>",
+                            "o": "text:equal"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_RESUMEN>",
+                "method": "post",
+                "timeout": "30",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": false,
+                "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"modo\": \"{{ifempty(1.modo; \"ON\")}}\", \"token\": \"<TOKEN>\"}",
+                "requestCompressedContent": true
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 1650
+                }
+            }
+        },
+        {
+            "id": 2,
+            "module": "http:MakeRequest",
+            "version": 4,
+            "parameters": {
+                "tlsType": "",
+                "authenticationType": "noAuth"
+            },
+            "mapper": {
+                "url": "https://hook.eu1.make.com/<WEBHOOK_RECUPERAR>",
+                "method": "post",
+                "timeout": "60",
+                "contentType": "json",
+                "inputMethod": "jsonString",
+                "shareCookies": false,
+                "parseResponse": true,
+                "allowRedirects": true,
+                "stopOnHttpError": true,
+                "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"consulta\": \"{{escapeJSON(1.mensaje)}}\", \"k\": 10, \"token\": \"<TOKEN>\"}",
+                "requestCompressedContent": true
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 1650
+                }
+            }
+        },
+        {
+            "id": 12,
+            "module": "datastore:GetRecord",
+            "version": 1,
+            "parameters": {
+                "datastore": null
+            },
+            "mapper": {
+                "key": "rel|{{1.agente}}|{{1.chat_id}}",
+                "returnWrapped": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 1650
+                }
+            }
+        },
+        {
+            "id": 3,
+            "module": "airtable:ActionSearchRecords",
+            "version": 3,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "base": "<AIRTABLE_BASE_ID>",
+                "sort": [
+                    {
+                        "field": "Creado",
+                        "direction": "desc"
+                    }
+                ],
+                "table": "<AIRTABLE_TABLE_ID>",
+                "fields": [
+                    "Memoria",
+                    "Autor"
+                ],
+                "formula": "AND({Agente}=\"{{1.agente}}\", {Chat_ID}=\"{{1.chat_id}}\", {Tipo}=\"observacion\")",
+                "maxRecords": "12",
+                "useColumnId": false,
+                "formulaField": "formula"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 1650
+                }
+            }
+        },
+        {
+            "id": 4,
+            "module": "util:TextAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 3,
+                "rowSeparator": "\n"
+            },
+            "mapper": {
+                "value": "- [{{3.Autor}}] {{3.Memoria}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1500,
+                    "y": 1650
+                }
+            }
+        },
+        {
+            "id": 14,
+            "module": "datastore:SearchRecord",
+            "version": 1,
+            "parameters": {
+                "limit": 10,
+                "datastore": null,
+                "continueWhenNoRes": true
+            },
+            "mapper": {
+                "sort": [
+                    {
+                        "key": "momento",
+                        "order": 1
+                    }
+                ],
+                "filter": [
+                    [
+                        {
+                            "a": "agente",
+                            "b": "{{1.agente}}",
+                            "o": "text:equal"
+                        },
+                        {
+                            "a": "momento",
+                            "b": "{{addDays(parseDate(formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\"); \"YYYY-MM-DD\"; \"Europe/Madrid\"); 1)}}",
+                            "o": "date:less"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "cumplido",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "fallido",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "liberado",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "caducado",
+                            "o": "text:notequal"
+                        }
+                    ]
+                ],
+                "mappAbleLimit": ""
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1800,
+                    "y": 1650
+                }
+            }
+        },
+        {
+            "id": 15,
+            "module": "util:TextAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 14,
+                "rowSeparator": "\n"
+            },
+            "mapper": {
+                "value": "{{switch(ifempty(14.data.destinatario; \"SELF\"); \"SELF\"; 14.data.linea; 1.chat_id; 14.data.linea; \"\")}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2100,
+                    "y": 1650
+                }
+            }
+        },
+        {
+            "id": 54,
+            "module": "datastore:SearchRecord",
+            "version": 1,
+            "parameters": {
+                "limit": 20,
+                "datastore": null,
+                "continueWhenNoRes": true
+            },
+            "mapper": {
+                "sort": [
+                    {
+                        "key": "momento",
+                        "order": 1
+                    }
+                ],
+                "filter": [
+                    [
+                        {
+                            "a": "agente",
+                            "b": "{{1.agente}}",
+                            "o": "text:equal"
+                        },
+                        {
+                            "a": "destinatario",
+                            "b": "{{1.chat_id}}",
+                            "o": "text:equal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "cumplido",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "fallido",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "liberado",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "caducado",
+                            "o": "text:notequal"
+                        }
+                    ],
+                    [
+                        {
+                            "a": "agente",
+                            "b": "{{1.agente}}",
+                            "o": "text:equal"
+                        },
+                        {
+                            "a": "comprometido_con",
+                            "b": "{{1.chat_id}}",
+                            "o": "text:equal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "cumplido",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "fallido",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "liberado",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "caducado",
+                            "o": "text:notequal"
+                        }
+                    ]
+                ],
+                "mappAbleLimit": ""
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2100,
+                    "y": 1950
+                }
+            }
+        },
+        {
+            "id": 55,
+            "module": "util:TextAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 54,
+                "rowSeparator": "\n"
+            },
+            "mapper": {
+                "value": "{{54.key}} · {{54.data.linea}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2400,
+                    "y": 1950
+                }
+            }
+        },
+        {
+            "id": 21,
+            "module": "datastore:GetRecord",
+            "version": 1,
+            "parameters": {
+                "datastore": null
+            },
+            "mapper": {
+                "key": "{{1.agente}}|{{1.chat_id}}",
+                "returnWrapped": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2400,
+                    "y": 1650
+                }
+            },
+            "onerror": [
+                {
+                    "id": 921,
+                    "module": "builtin:Ignore",
+                    "version": 1,
+                    "metadata": {
+                        "designer": {
+                            "x": 2700,
+                            "y": 3300
+                        }
+                    }
+                }
             ]
-          }
-        ],
-        "generationConfig": {
-          "imageConfig": {},
-          "thinkingConfig": {}
         },
-        "system_instruction": {
-          "parts": [
-            {
-              "text": "{{1.descripcion}}\n\nLo que {{1.agente}} ha llegado a saber de sí mismo por lo vivido en esta conversación (si está vacío, ignóralo):\n{{9.data.resumen}}\n\nEres {{1.agente}} y estás hablando por Telegram. Mantente siempre en tu personaje. Responde en el idioma del interlocutor, con la extensión propia de un chat, y no inventes recuerdos que no aparezcan en tu memoria."
-            }
-          ]
-        }
-      },
-      "metadata": {
-        "designer": {
-          "x": 2400,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 6,
-      "module": "gateway:WebhookRespond",
-      "version": 1,
-      "parameters": {},
-      "mapper": {
-        "body": "{\"respuesta\": \"{{escapeJSON(trim(5.result))}}\"}",
-        "status": "200",
-        "headers": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ]
-      },
-      "metadata": {
-        "designer": {
-          "x": 2700,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 10,
-      "module": "http:MakeRequest",
-      "version": 4,
-      "parameters": {
-        "tlsType": "",
-        "authenticationType": "noAuth"
-      },
-      "filter": {
-        "name": "Sin caché de relación o caducada (24 h)",
-        "conditions": [
-          [
-            {
-              "a": "{{12.resumen}}",
-              "o": "notexist"
-            }
-          ],
-          [
-            {
-              "a": "{{12.actualizado}}",
-              "b": "{{addHours(now; -24)}}",
-              "o": "date:lessorequal"
-            }
-          ]
-        ]
-      },
-      "mapper": {
-        "url": "https://hook.eu1.make.com/<WEBHOOK_RECUPERAR>",
-        "method": "post",
-        "timeout": "60",
-        "contentType": "json",
-        "inputMethod": "jsonString",
-        "shareCookies": false,
-        "parseResponse": true,
-        "allowRedirects": true,
-        "stopOnHttpError": true,
-        "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"consulta\": \"¿Qué relación tiene {{1.agente}} con {{escapeJSON(ifempty(1.usuario; \"su interlocutor\"))}} y qué sabe de esa persona?\", \"k\": 10}",
-        "requestCompressedContent": true
-      },
-      "metadata": {
-        "designer": {
-          "x": 3000,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 11,
-      "module": "gemini-ai:createACompletionGeminiPro",
-      "version": 1,
-      "parameters": {
-        "__IMTCONN__": null
-      },
-      "mapper": {
-        "model": "gemini-3.8-flash",
-        "contents": [
-          {
-            "role": "user",
-            "parts": [
-              {
-                "text": "Afirmaciones que recuerda {{1.agente}} de su conversación con {{ifempty(1.usuario; \"su interlocutor\")}}:\n{{ifempty(10.data.texto; \"(ninguna)\")}}\n\n¿Qué relación tiene {{1.agente}} con {{ifempty(1.usuario; \"su interlocutor\")}} y qué sabe de esa persona? Responde en una o dos frases, en tercera persona y en texto plano, usando solo lo que se deduzca de las afirmaciones. Si no hay nada concreto, responde únicamente: {{1.agente}} todavía no sabe nada concreto de {{ifempty(1.usuario; \"su interlocutor\")}}.",
-                "type": "text"
-              }
+        {
+            "id": 20,
+            "module": "builtin:BasicRouter",
+            "version": 1,
+            "mapper": null,
+            "metadata": {
+                "designer": {
+                    "x": 2700,
+                    "y": 1500
+                }
+            },
+            "routes": [
+                {
+                    "flow": [
+                        {
+                            "id": 50,
+                            "module": "gemini-ai:createACompletionGeminiPro",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "mapper": {
+                                "model": "gemini-3.8-flash",
+                                "contents": [
+                                    {
+                                        "role": "user",
+                                        "parts": [
+                                            {
+                                                "text": "Lee el mensaje que el interlocutor acaba de enviar a {{1.agente}} y decide qué acto de habla es, según el modelo de compromisos de Shoham.\n\n{{1.agente}} solo puede comprometerse a estas acciones:\ninformar: escribir más adelante al interlocutor por iniciativa propia, por ejemplo para avisarle de algo o darle un dato, con cotizaciones si hacen falta;\npreguntar: hacerle más adelante una pregunta;\ninvestigar: buscar información sobre un tema;\ncotizar: consultar precios de valores para sí mismo, sin escribir a nadie;\nestudiar: analizar un evento o un dato económico cuando se publique;\nabstenerse: no hacer algo que el interlocutor no quiere (informar o preguntar).\n\nActos posibles:\nREQUEST: el interlocutor pide a {{1.agente}} que haga una de esas acciones más adelante, a una hora, en una fecha o cuando se cumpla una condición; o acepta algo que {{1.agente}} le ofreció en su último mensaje. Si le pide que no le escriba o no le pregunte por algo, es REQUEST con la acción abstenerse.\nUNREQUEST: el interlocutor libera a {{1.agente}} de algo que le había pedido («ya no hace falta que me avises», «olvida lo de Inditex») o retira una prohibición anterior; en ese caso la acción es abstenerse.\nNINGUNO: cualquier otro mensaje, incluidas las preguntas que {{1.agente}} puede contestar en este mismo momento.\n\nCampos:\naccion: una de las acciones anteriores; en UNREQUEST, vacía si le libera de todo.\ndia (AAAA-MM-DD) y hora (HH:mm), en hora de Madrid; vacíos si es para ahora o no se dice.\nfin (AAAA-MM-DD): hasta cuándo vale el encargo si el interlocutor lo dice; si no, vacío.\ncondicion: la condición de la que depende, escrita de forma que se pueda comprobar con datos (por ejemplo «Inditex por debajo de 50 euros»); si no hay, vacía.\nsimbolos: símbolos de Yahoo Finance de los valores implicados, separados por comas (por ejemplo ITX.MC, SAN.MC, ^IBEX); si no hay, vacío.\ncontenido: qué hará {{1.agente}}, en una frase y con los datos concretos que haya en la conversación; en abstenerse, solo la acción de la que se abstiene (informar o preguntar); en UNREQUEST, de qué le libera.\nlibera: en UNREQUEST, las claves de los compromisos de la lista de los que le libera, separadas por comas; si le libera de todo, todas las claves; si no reconoces ninguno, vacía. En una abstención, las claves de los compromisos de la lista que dejan de tener sentido por ella. En los demás casos, vacía.\nrepite: en REQUEST, la clave del compromiso de la lista que ya pide lo mismo; si no hay ninguno, vacía.\nvetado_por: en REQUEST, la clave de la abstención de la lista que prohíbe lo que ahora pide; si no hay ninguna, vacía.\nEn una abstención sobre valores concretos, pon sus símbolos; sobre un tema sin valores, escribe el tema en condicion; si es sobre todo, deja ambos vacíos.\nUsa solo claves que aparezcan en la lista.\nEn NINGUNO, deja vacíos todos los campos salvo acto.\n\nAhora es {{switch(formatDate(now; \"d\"; \"Europe/Madrid\"); \"0\"; \"domingo\"; \"1\"; \"lunes\"; \"2\"; \"martes\"; \"3\"; \"miércoles\"; \"4\"; \"jueves\"; \"5\"; \"viernes\"; \"6\"; \"sábado\")}}, {{formatDate(now; \"YYYY-MM-DD [a las] HH:mm\"; \"Europe/Madrid\")}}, hora de Madrid.\n\nConversación reciente, de lo más nuevo a lo más antiguo:\n{{4.text}}\n\nCompromisos vigentes de {{1.agente}} con este interlocutor, con su clave:\n{{ifempty(trim(55.text); \"ninguno\")}}\n\nMensaje que debes clasificar: «{{1.mensaje}}»",
+                                                "type": "text"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "generationConfig": {
+                                    "imageConfig": {},
+                                    "responseSchema": "{\"type\":\"object\",\"properties\":{\"acto\":{\"type\":\"string\",\"enum\":[\"REQUEST\",\"UNREQUEST\",\"NINGUNO\"]},\"accion\":{\"type\":\"string\"},\"dia\":{\"type\":\"string\"},\"hora\":{\"type\":\"string\"},\"fin\":{\"type\":\"string\"},\"condicion\":{\"type\":\"string\"},\"simbolos\":{\"type\":\"string\"},\"contenido\":{\"type\":\"string\"},\"libera\":{\"type\":\"string\"},\"repite\":{\"type\":\"string\"},\"vetado_por\":{\"type\":\"string\"}},\"required\":[\"acto\",\"accion\",\"dia\",\"hora\",\"fin\",\"condicion\",\"simbolos\",\"contenido\",\"libera\",\"repite\",\"vetado_por\"]}",
+                                    "thinkingConfig": {},
+                                    "responseMimeType": "application/json"
+                                },
+                                "system_instruction": {
+                                    "parts": [
+                                        {
+                                            "text": "Clasificas mensajes para un agente que funciona con el modelo de compromisos de Shoham. Respondes solo con el JSON pedido y no inventas datos que la conversación no da."
+                                        }
+                                    ]
+                                }
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3000,
+                                    "y": -350
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 950,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 3000,
+                                            "y": -200
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 51,
+                            "module": "http:MakeRequest",
+                            "version": 4,
+                            "parameters": {
+                                "tlsType": "",
+                                "authenticationType": "noAuth"
+                            },
+                            "filter": {
+                                "name": "Pide o libera un compromiso",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{50.result.acto}}",
+                                            "b": "REQUEST",
+                                            "o": "text:equal"
+                                        }
+                                    ],
+                                    [
+                                        {
+                                            "a": "{{50.result.acto}}",
+                                            "b": "UNREQUEST",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "url": "https://hook.eu1.make.com/<WEBHOOK_COMPROMETER>",
+                                "method": "post",
+                                "timeout": "40",
+                                "contentType": "json",
+                                "inputMethod": "jsonString",
+                                "shareCookies": false,
+                                "parseResponse": false,
+                                "allowRedirects": true,
+                                "stopOnHttpError": false,
+                                "jsonStringBodyContent": "{\"token\": \"{{escapeJSON(1.token)}}\", \"acto\": \"{{50.result.acto}}\", \"agente\": \"{{1.agente}}\", \"chat\": \"{{1.chat_id}}\", \"accion\": \"{{escapeJSON(50.result.accion)}}\", \"dia\": \"{{50.result.dia}}\", \"hora\": \"{{50.result.hora}}\", \"fin\": \"{{50.result.fin}}\", \"condicion\": \"{{escapeJSON(50.result.condicion)}}\", \"simbolos\": \"{{escapeJSON(50.result.simbolos)}}\", \"contenido\": \"{{escapeJSON(50.result.contenido)}}\", \"libera\": \"{{escapeJSON(50.result.libera)}}\", \"repite\": \"{{escapeJSON(50.result.repite)}}\", \"vetado_por\": \"{{escapeJSON(50.result.vetado_por)}}\", \"origen\": \"percibir\", \"nivel\": 0}",
+                                "requestCompressedContent": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3300,
+                                    "y": -350
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 951,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 3300,
+                                            "y": -200
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 52,
+                            "module": "util:SetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "decision",
+                                "scope": "roundtrip",
+                                "value": "{{if(contains(split(\"ACEPTADO.,RECHAZADO.,LIBERADO.,NADA.\"; \",\"); first(split(trim(toString(51.data)); \" \"))); trim(toString(51.data)); \"Ahora mismo no has podido consultar tu agenda de compromisos. Di que en este momento no puedes apuntarlo y pide que te lo repita más tarde. No prometas nada ni te niegues.\")}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3600,
+                                    "y": -350
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 30,
+                            "module": "gemini-ai:createACompletionGeminiPro",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "filter": {
+                                "name": "Habla de sus posiciones",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{1.mensaje}}",
+                                            "b": "compr[eéoaá]|vend[iíoaá]|tengo .*(acci|particip|t[ií]tulo|fondo|etf|bono|letra|euros en|d[oó]lares en)|mi cartera|invierto|he invertido|he metido|he puesto|liquid|deshec|ampli[eéoa]|reduj|reduzc|deshacerme|me he salido|he salido de",
+                                            "o": "text:pattern:ci"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "model": "gemini-3.8-flash",
+                                "contents": [
+                                    {
+                                        "role": "user",
+                                        "parts": [
+                                            {
+                                                "text": "Posiciones registradas de {{ifempty(1.usuario; \"esta persona\")}} (JSON; vacío si no hay ninguna): {{ifempty(21.posiciones; \"[]\")}}\nResumen registrado de su cartera e intereses: {{ifempty(21.cartera; \"(ninguno)\")}}\n\nMensaje que acaba de escribir: {{1.mensaje}}\n\n¿Comunica el mensaje, de forma explícita y en primera persona, que tiene, ha comprado, ha vendido o ha cambiado alguna posición propia? Las preguntas, las hipótesis («¿y si compro…?», «estoy pensando en…») y lo que hacen otras personas NO cuentan.\nSi no la comunica, devuelve cambia=false y repite las posiciones y el resumen sin tocarlos.\nSi la comunica, devuelve cambia=true y la lista COMPLETA de posiciones tras el cambio: conserva las que no menciona, suma o resta cantidades en compras y ventas parciales, elimina las vendidas por completo y recalcula el precio medio ponderado en las compras. Usa símbolos de Yahoo Finance (Bolsa de Madrid con sufijo .MC, Estados Unidos sin sufijo, ETF por su ticker de Yahoo solo si lo conoces con certeza; si no, deja el símbolo vacío). Si no da cantidad o precio, pon 0 en ese campo; no inventes cifras.\nEn resumen escribe en tercera persona, en una o dos frases, la cartera resultante con cantidades y precios medios, y conserva lo que el resumen anterior dijera de sus intereses, horizonte o preocupaciones.\nposiciones_json debe ser exactamente la lista de posiciones como texto JSON.",
+                                                "type": "text"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "generationConfig": {
+                                    "imageConfig": {},
+                                    "responseSchema": "{\"type\":\"object\",\"properties\":{\"cambia\":{\"type\":\"boolean\"},\"posiciones\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"simbolo\":{\"type\":\"string\"},\"nombre\":{\"type\":\"string\"},\"cantidad\":{\"type\":\"number\"},\"precio_medio\":{\"type\":\"number\"},\"moneda\":{\"type\":\"string\"}},\"required\":[\"simbolo\",\"nombre\",\"cantidad\",\"precio_medio\",\"moneda\"]}},\"posiciones_json\":{\"type\":\"string\"},\"resumen\":{\"type\":\"string\"}},\"required\":[\"cambia\",\"posiciones\",\"posiciones_json\",\"resumen\"]}",
+                                    "thinkingConfig": {},
+                                    "responseMimeType": "application/json"
+                                },
+                                "system_instruction": {
+                                    "parts": [
+                                        {
+                                            "text": "Mantienes al día, con exactitud contable, el registro de posiciones de inversión de una persona. No inventas datos."
+                                        }
+                                    ]
+                                }
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3000,
+                                    "y": 300
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 930,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 3300,
+                                            "y": 600
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 31,
+                            "module": "datastore:AddRecord",
+                            "version": 1,
+                            "parameters": {
+                                "datastore": null
+                            },
+                            "filter": {
+                                "name": "Hay cambio en la cartera",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{30.result.cambia}}",
+                                            "b": "true",
+                                            "o": "boolean:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "key": "{{1.agente}}|{{1.chat_id}}",
+                                "data": {
+                                    "agente": "{{1.agente}}",
+                                    "cartera": "{{30.result.resumen}}",
+                                    "chat_id": "{{1.chat_id}}",
+                                    "posiciones": "{{30.result.posiciones_json}}",
+                                    "actualizado": "{{formatDate(now; \"DD/MM/YYYY HH:mm\"; \"Europe/Madrid\")}}"
+                                },
+                                "overwrite": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3300,
+                                    "y": 150
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 931,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 3600,
+                                            "y": 300
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 32,
+                            "module": "util:SetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "cartera_nueva",
+                                "scope": "roundtrip",
+                                "value": "{{30.result.resumen}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3600,
+                                    "y": 0
+                                }
+                            }
+                        },
+                        {
+                            "id": 33,
+                            "module": "util:SetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "posiciones_nuevas",
+                                "scope": "roundtrip",
+                                "value": "{{30.result.posiciones_json}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3900,
+                                    "y": 0
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 22,
+                            "module": "gemini-ai:createACompletionGeminiPro",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "filter": {
+                                "name": "Pregunta por precios o mercado",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{1.mensaje}}",
+                                            "b": "cotiz|precio|cu[aá]nto (vale|est[aá]|cotiza)|c[oó]mo (va|est[aá]|ha cerrado|ha abierto|cerr[oó]|abri[oó])|bolsa|ibex|acci[oó]n|acciones|cartera|mercado|sub(e|en|i[oó]|ido)|baj(a|an|[oó]|ado)|ca(e|en|[ií]do|y[oó])|nasdaq|s&p|dow jones|[íi]ndice|euro stoxx|etf",
+                                            "o": "text:pattern:ci"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "model": "gemini-3.8-flash",
+                                "contents": [
+                                    {
+                                        "role": "user",
+                                        "parts": [
+                                            {
+                                                "text": "Mensaje de {{ifempty(1.usuario; \"su interlocutor\")}} a {{1.agente}}: {{1.mensaje}}\n\nCartera e intereses registrados de esa persona: {{ifempty(21.cartera; \"no hay cartera registrada\")}}\nPosiciones registradas (JSON, con su símbolo de Yahoo): {{ifempty(21.posiciones; \"[]\")}}\n\n¿Necesita {{1.agente}} conocer cotizaciones actuales para responder bien a este mensaje? Si es así, devuelve como máximo 5 símbolos de Yahoo Finance de los valores o índices concretos que hacen falta: acciones de la Bolsa de Madrid con el sufijo .MC (ITX.MC, SAN.MC), acciones de Estados Unidos sin sufijo (AAPL), índices con su símbolo de Yahoo (^IBEX, ^STOXX50E, ^GSPC, ^IXIC) y ETF por su ticker de Yahoo solo si lo conoces con certeza. Si el mensaje habla de la cartera en general, usa las posiciones de la cartera registrada. Si no hacen falta cotizaciones, devuelve la lista vacía.\nDevuelve exclusivamente un JSON: {\"simbolos\": [\"...\"]}",
+                                                "type": "text"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "generationConfig": {
+                                    "imageConfig": {},
+                                    "responseSchema": "{\"type\":\"object\",\"properties\":{\"simbolos\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"simbolos\"]}",
+                                    "thinkingConfig": {},
+                                    "responseMimeType": "application/json"
+                                },
+                                "system_instruction": {
+                                    "parts": [
+                                        {
+                                            "text": "Identificas con precisión los símbolos bursátiles que necesita un asesor financiero para contestar un mensaje. No inventes símbolos."
+                                        }
+                                    ]
+                                }
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3000,
+                                    "y": 1350
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 922,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 3300,
+                                            "y": 1800
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 23,
+                            "module": "http:MakeRequest",
+                            "version": 4,
+                            "parameters": {
+                                "tlsType": "",
+                                "authenticationType": "noAuth"
+                            },
+                            "filter": {
+                                "name": "Hay símbolos",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{join(22.result.simbolos; \",\")}}",
+                                            "o": "exist"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "url": "https://hook.eu1.make.com/<WEBHOOK_COTIZAR>",
+                                "method": "post",
+                                "timeout": "40",
+                                "contentType": "json",
+                                "inputMethod": "jsonString",
+                                "shareCookies": false,
+                                "parseResponse": false,
+                                "allowRedirects": true,
+                                "stopOnHttpError": false,
+                                "jsonStringBodyContent": "{\"token\": \"<TOKEN>\", \"simbolos\": \"{{escapeJSON(join(22.result.simbolos; \",\"))}}\"}",
+                                "requestCompressedContent": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3300,
+                                    "y": 1200
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 923,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 3600,
+                                            "y": 1500
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 28,
+                            "module": "util:GetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "posiciones_nuevas"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3600,
+                                    "y": 1050
+                                }
+                            }
+                        },
+                        {
+                            "id": 27,
+                            "module": "code:ExecuteCode",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "input": [
+                                    {
+                                        "name": "precios_json",
+                                        "value": "{{23.data}}"
+                                    },
+                                    {
+                                        "name": "posiciones_json",
+                                        "value": "{{ifempty(28.posiciones_nuevas; 21.posiciones)}}"
+                                    }
+                                ],
+                                "language": "javascript",
+                                "inputFormat": "editor",
+                                "dependencies": [],
+                                "codeEditorJavascript": "const { precios_json, posiciones_json } = input;\nconst num = (n, d) => {\n  if (n === null || n === undefined || !isFinite(n)) return \"s/d\";\n  const neg = n < 0;\n  let [e, dec] = Math.abs(n).toFixed(d).split(\".\");\n  e = e.replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\");\n  return (neg ? \"-\" : \"\") + e + (d > 0 ? \",\" + dec : \"\");\n};\nconst decs = x => Math.min(4, Math.max(2, ((String(x).split(\".\")[1]) || \"\").length));\nconst sig = n => (n > 0 ? \"+\" : \"\") + num(n, 2);\nlet precios = [];\ntry { precios = JSON.parse(precios_json || \"{}\").precios || []; } catch (e) { precios = []; }\nlet posiciones = [];\ntry { posiciones = JSON.parse(posiciones_json || \"[]\"); } catch (e) { posiciones = []; }\nif (!Array.isArray(posiciones)) posiciones = [];\n\nconst lineas = precios.map(p => {\n  if (p.precio === null || p.precio === undefined) {\n    return `${p.simbolo}: sin datos${p.error ? \" (\" + p.error + \")\" : \"\"}`;\n  }\n  const dec = decs(p.precio);\n  const variacion = p.cierre_anterior ? (p.precio / p.cierre_anterior - 1) * 100 : null;\n  return `${p.simbolo} (${p.nombre}): ${num(p.precio, dec)} ${p.moneda}` +\n    (variacion === null ? \"\" : `, ${sig(variacion)} % frente al cierre anterior de ${num(p.cierre_anterior, dec)}`) +\n    (p.hora ? `, dato de ${p.hora}` : \"\");\n});\n\nconst porSimbolo = {};\nfor (const p of precios) {\n  if (p.precio !== null && p.precio !== undefined) porSimbolo[String(p.simbolo).toUpperCase()] = p;\n}\nconst filas = [];\nconst tot = {};\nfor (const q of posiciones) {\n  const p = porSimbolo[String(q.simbolo || \"\").toUpperCase()];\n  const cantidad = Number(q.cantidad) || 0;\n  if (!p || !cantidad) continue;\n  const moneda = p.moneda || q.moneda || \"\";\n  const valor = cantidad * p.precio;\n  const t = tot[moneda] || (tot[moneda] = { valor: 0, valorConCoste: 0, coste: 0 });\n  t.valor += valor;\n  let fila = `${q.nombre || q.simbolo}: ${num(cantidad, cantidad % 1 ? 2 : 0)} títulos a ${num(p.precio, decs(p.precio))} = ${num(valor, 2)} ${moneda}`;\n  const pm = Number(q.precio_medio) || 0;\n  if (pm > 0) {\n    const coste = cantidad * pm;\n    const pl = valor - coste;\n    t.valorConCoste += valor;\n    t.coste += coste;\n    fila += `; coste ${num(coste, 2)} ${moneda}; resultado ${sig(pl)} ${moneda} (${sig(pl / coste * 100)} %)`;\n  }\n  filas.push(fila);\n}\nlet valoracion = \"\";\nif (filas.length) {\n  valoracion = \"Valoración de su cartera, calculada con exactitud (usa estas cifras tal cual, no hagas cuentas propias):\\n\" + filas.join(\"\\n\");\n  for (const [moneda, t] of Object.entries(tot)) {\n    valoracion += `\\nTotal en ${moneda}: ${num(t.valor, 2)} ${moneda}`;\n    if (t.coste > 0) {\n      const pl = t.valorConCoste - t.coste;\n      valoracion += `; resultado de las posiciones con precio de compra conocido ${sig(pl)} ${moneda} (${sig(pl / t.coste * 100)} %)`;\n    }\n  }\n}\nreturn { texto: lineas.join(\"\\n\") + (valoracion ? \"\\n\\n\" + valoracion : \"\"), valoradas: filas.length };\n"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3900,
+                                    "y": 1050
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 927,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 4200,
+                                            "y": 1200
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 24,
+                            "module": "util:SetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "cotizaciones",
+                                "scope": "roundtrip",
+                                "value": "{{27.result.texto}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 4200,
+                                    "y": 900
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 40,
+                            "module": "gemini-ai:createACompletionGeminiPro",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "filter": {
+                                "name": "Pide o implica un cálculo",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{1.mensaje}}",
+                                            "b": "calcul|cu[aá]nto (ser[ií]a|tendr[ií]a|ganar[ií]a|ganar[eé]|pagar[ií]a|pagar[eé]|me queda|me quedar[ií]a|me costar[ií]a|necesito|hace falta|rinde|renta)|inter[eé]s|hipoteca|cuota|rentabilidad|anualizad|compuest|amortiz|\\btae\\b|\\btin\\b|plazo fijo|jubila|inflaci[oó]n|[0-9] ?%|[0-9] ?a[nñ]os",
+                                            "o": "text:pattern:ci"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "model": "gemini-3.8-flash",
+                                "contents": [
+                                    {
+                                        "role": "user",
+                                        "parts": [
+                                            {
+                                                "text": "Mensaje de {{ifempty(1.usuario; \"su interlocutor\")}} a {{1.agente}}, asesor financiero: {{1.mensaje}}\n\nCartera registrada de esa persona: {{ifempty(21.cartera; \"no hay cartera registrada\")}}\n\n¿Necesita {{1.agente}} hacer alguna cuenta numérica para responder bien (interés compuesto, cuota de un préstamo, rentabilidad, conversión, porcentajes, ahorro necesario…)? Las cotizaciones y la valoración de la cartera se calculan aparte: no las incluyas.\nSi no hace falta ninguna cuenta, devuelve necesita=false y deja codigo y planteamiento vacíos.\nSi hace falta, devuelve necesita=true, en planteamiento una frase con la cuenta que se hace y los supuestos que tomas (si falta un dato imprescindible, toma un supuesto razonable y dilo), y en codigo el cuerpo de una función de JavaScript que haga la cuenta solo con aritmética y Math, sin bucles de más de 1.000 vueltas, sin funciones asíncronas y sin acceder a nada externo, y que termine con return { resultado: \"...\" }, donde resultado es un texto en español con las cifras redondeadas a dos decimales, con coma decimal y sus unidades.",
+                                                "type": "text"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "generationConfig": {
+                                    "imageConfig": {},
+                                    "responseSchema": "{\"type\":\"object\",\"properties\":{\"necesita\":{\"type\":\"boolean\"},\"planteamiento\":{\"type\":\"string\"},\"codigo\":{\"type\":\"string\"}},\"required\":[\"necesita\",\"planteamiento\",\"codigo\"]}",
+                                    "thinkingConfig": {},
+                                    "responseMimeType": "application/json"
+                                },
+                                "system_instruction": {
+                                    "parts": [
+                                        {
+                                            "text": "Eres un analista cuantitativo meticuloso. Planteas las cuentas financieras con exactitud y escribes código JavaScript mínimo y correcto."
+                                        }
+                                    ]
+                                }
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3000,
+                                    "y": 2400
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 940,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 3300,
+                                            "y": 2700
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 41,
+                            "module": "code:ExecuteCode",
+                            "version": 1,
+                            "parameters": {},
+                            "filter": {
+                                "name": "Hay cálculo y el código es seguro",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{40.result.necesita}}",
+                                            "b": "true",
+                                            "o": "boolean:equal"
+                                        },
+                                        {
+                                            "a": "{{40.result.codigo}}",
+                                            "o": "exist"
+                                        },
+                                        {
+                                            "a": "{{40.result.codigo}}",
+                                            "b": "require|import|process|fetch|eval|Function|global|constructor|prototype|__|while\\s*\\(\\s*true|for\\s*\\(\\s*;\\s*;|setTimeout|setInterval|XMLHttp|Buffer|child_|\\bfs\\b|http|module|exports|async|await|Promise",
+                                            "o": "text:notpattern"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "input": [],
+                                "language": "javascript",
+                                "inputFormat": "string",
+                                "dependencies": [],
+                                "codeStringJavascript": "{{40.result.codigo}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3300,
+                                    "y": 2250
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 941,
+                                    "module": "builtin:Ignore",
+                                    "version": 1,
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 3600,
+                                            "y": 2400
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 42,
+                            "module": "util:SetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "calculo",
+                                "scope": "roundtrip",
+                                "value": "{{40.result.planteamiento}} Resultado: {{41.result.resultado}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3600,
+                                    "y": 2100
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 25,
+                            "module": "util:GetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "cotizaciones"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3000,
+                                    "y": 3000
+                                }
+                            }
+                        },
+                        {
+                            "id": 26,
+                            "module": "util:GetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "cartera_nueva"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3300,
+                                    "y": 3000
+                                }
+                            }
+                        },
+                        {
+                            "id": 29,
+                            "module": "util:GetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "calculo"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3600,
+                                    "y": 3000
+                                }
+                            }
+                        },
+                        {
+                            "id": 53,
+                            "module": "util:GetVariable2",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "name": "decision"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3750,
+                                    "y": 3250
+                                }
+                            }
+                        },
+                        {
+                            "id": 5,
+                            "module": "gemini-ai:createACompletionGeminiPro",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "mapper": {
+                                "model": "gemini-3.8-flash",
+                                "contents": [
+                                    {
+                                        "role": "user",
+                                        "parts": [
+                                            {
+                                                "text": "Son las {{formatDate(now; \"HH:mm [del] DD/MM/YYYY\"; \"Europe/Madrid\")}}.\n\nCompromisos que {{1.agente}} tiene pendientes para hoy, en notación de compromisos (menciónalos solo si vienen al caso): {{ifempty(trim(15.text); \"ninguno\")}}\nDecisión sobre los compromisos que pide este mensaje: {{ifempty(53.decision; \"este mensaje no pide ningún compromiso\")}} Atente a ella: si se ha aceptado, confírmalo diciendo cuándo lo harás; si se ha rechazado, explica el motivo con tu estilo; si te han liberado, dilo; y no prometas nada que no esté aceptado aquí o en tus compromisos.\n\nLo que {{1.agente}} sabe de {{ifempty(1.usuario; \"su interlocutor\")}} y de su relación: {{ifempty(12.resumen; \"todavía no hay un resumen; guíate por el historial\")}}\n\nResumen del contexto relevante de la memoria de {{1.agente}} (ordenado por relevancia):\n{{2.data.texto}}\n\nCartera e intereses registrados de {{ifempty(1.usuario; \"su interlocutor\")}} (si está vacío, no ha contado nada de su cartera; no le atribuyas posiciones que no figuren aquí): {{ifempty(26.cartera_nueva; 21.cartera)}}\n\nCotizaciones consultadas ahora mismo en Yahoo Finance (si está vacío, no se han consultado; si la fecha del dato es de una sesión anterior, ese mercado aún no ha abierto o ya cerró):\n{{25.cotizaciones}}\n\nCálculos hechos ahora para este mensaje (si está vacío, no se ha calculado nada; si hay cifras, son exactas: úsalas tal cual y menciona los supuestos si importan):\n{{29.calculo}}\n\nHistorial reciente de la conversación (del más reciente al más antiguo):\n{{4.text}}\n\n{{ifempty(1.usuario; \"El interlocutor\")}} le dice a {{1.agente}}: {{1.mensaje}}\n\n¿Cómo respondería {{1.agente}}? Escribe únicamente su respuesta, sin comillas ni prefijos.",
+                                                "type": "text"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "generationConfig": {
+                                    "imageConfig": {},
+                                    "thinkingConfig": {}
+                                },
+                                "system_instruction": {
+                                    "parts": [
+                                        {
+                                            "text": "{{1.descripcion}}\n\nLo que {{1.agente}} ha llegado a saber de sí mismo por lo vivido en esta conversación (si está vacío, ignóralo):\n{{9.data.resumen}}\n\nEres {{1.agente}} y estás hablando por Telegram. Mantente siempre en tu personaje. Responde en el idioma del interlocutor, con la extensión propia de un chat, y no inventes recuerdos que no aparezcan en tu memoria. No inventes precios ni cotizaciones: cita solo las cifras que aparezcan en las cotizaciones consultadas y, si no las tienes, dilo. Si en este mensaje te comunica un cambio en su cartera, ya ha quedado registrado: confírmalo con naturalidad. Si recibes una valoración de la cartera ya calculada, usa sus cifras exactamente como vienen y no hagas cuentas por tu cuenta."
+                                        }
+                                    ]
+                                }
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3900,
+                                    "y": 3000
+                                }
+                            }
+                        },
+                        {
+                            "id": 6,
+                            "module": "gateway:WebhookRespond",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "body": "{\"respuesta\": \"{{escapeJSON(trim(5.result))}}\"}",
+                                "status": "200",
+                                "headers": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ]
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 4200,
+                                    "y": 3000
+                                }
+                            }
+                        },
+                        {
+                            "id": 10,
+                            "module": "http:MakeRequest",
+                            "version": 4,
+                            "parameters": {
+                                "tlsType": "",
+                                "authenticationType": "noAuth"
+                            },
+                            "filter": {
+                                "name": "Sin caché de relación o caducada (24 h)",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{12.resumen}}",
+                                            "o": "notexist"
+                                        }
+                                    ],
+                                    [
+                                        {
+                                            "a": "{{12.actualizado}}",
+                                            "b": "{{addHours(now; -24)}}",
+                                            "o": "date:lessorequal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "url": "https://hook.eu1.make.com/<WEBHOOK_RECUPERAR>",
+                                "method": "post",
+                                "timeout": "60",
+                                "contentType": "json",
+                                "inputMethod": "jsonString",
+                                "shareCookies": false,
+                                "parseResponse": true,
+                                "allowRedirects": true,
+                                "stopOnHttpError": true,
+                                "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"consulta\": \"¿Qué relación tiene {{1.agente}} con {{escapeJSON(ifempty(1.usuario; \"su interlocutor\"))}} y qué sabe de esa persona?\", \"k\": 10, \"token\": \"<TOKEN>\"}",
+                                "requestCompressedContent": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 4500,
+                                    "y": 3000
+                                }
+                            }
+                        },
+                        {
+                            "id": 11,
+                            "module": "gemini-ai:createACompletionGeminiPro",
+                            "version": 1,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "mapper": {
+                                "model": "gemini-3.8-flash",
+                                "contents": [
+                                    {
+                                        "role": "user",
+                                        "parts": [
+                                            {
+                                                "text": "Afirmaciones que recuerda {{1.agente}} de su conversación con {{ifempty(1.usuario; \"su interlocutor\")}}:\n{{ifempty(10.data.texto; \"(ninguna)\")}}\n\n¿Qué relación tiene {{1.agente}} con {{ifempty(1.usuario; \"su interlocutor\")}} y qué sabe de esa persona? Responde en una o dos frases, en tercera persona y en texto plano, usando solo lo que se deduzca de las afirmaciones. Si no hay nada concreto, responde únicamente: {{1.agente}} todavía no sabe nada concreto de {{ifempty(1.usuario; \"su interlocutor\")}}.",
+                                                "type": "text"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "generationConfig": {
+                                    "imageConfig": {},
+                                    "thinkingConfig": {}
+                                },
+                                "system_instruction": {
+                                    "parts": [
+                                        {
+                                            "text": "Resumes recuerdos con precisión y sin inventar nada."
+                                        }
+                                    ]
+                                }
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 4800,
+                                    "y": 3000
+                                }
+                            }
+                        },
+                        {
+                            "id": 13,
+                            "module": "datastore:AddRecord",
+                            "version": 1,
+                            "parameters": {
+                                "datastore": null
+                            },
+                            "filter": {
+                                "name": "Hay algo que cachear",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{11.result}}",
+                                            "b": "todavía no sabe nada concreto",
+                                            "o": "text:notcontain"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "key": "rel|{{1.agente}}|{{1.chat_id}}",
+                                "data": {
+                                    "agente": "{{1.agente}}",
+                                    "chat_id": "{{1.chat_id}}",
+                                    "resumen": "{{trim(11.result)}}",
+                                    "actualizado": "{{now}}"
+                                },
+                                "overwrite": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 5100,
+                                    "y": 3000
+                                }
+                            }
+                        }
+                    ]
+                }
             ]
-          }
-        ],
-        "generationConfig": {
-          "imageConfig": {},
-          "thinkingConfig": {}
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
         },
-        "system_instruction": {
-          "parts": [
-            {
-              "text": "Resumes recuerdos con precisión y sin inventar nada."
-            }
-          ]
-        }
-      },
-      "metadata": {
         "designer": {
-          "x": 3300,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 13,
-      "module": "datastore:AddRecord",
-      "version": 1,
-      "parameters": {
-        "datastore": null
-      },
-      "filter": {
-        "name": "Hay algo que cachear",
-        "conditions": [
-          [
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": [
             {
-              "a": "{{11.result}}",
-              "b": "todavía no sabe nada concreto",
-              "o": "text:notcontain"
+                "moduleIds": [
+                    54
+                ],
+                "content": "<p><strong>Compromisos de este chat</strong></p><p>Los vigentes con este interlocutor, con su clave, para que Percibir señale de cuáles libera, cuál repite o qué veto choca con la petición. Comprometer decide con esas claves.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    14,
+                    15
+                ],
+                "content": "<p><strong>Compromisos pendientes de hoy</strong></p><p>Lee de Compromisos las órdenes del agente que vencen hoy: las propias y las de este chat, nunca las de otros chats. La respuesta las tiene en cuenta.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    31
+                ],
+                "content": "<p><strong>Registro de cartera</strong></p><p>Origen: el mensaje del usuario, si comunica compras, ventas o posiciones propias (módulo 30 las extrae).</p><p>Destino: almacén [Human_proxy] Cartera, campos cartera (resumen) y posiciones (JSON).</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    10
+                ],
+                "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (6) Responder, módulo 10.</p><p>Destino: (4) Recuperar.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    2
+                ],
+                "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (6) Responder, módulo 2.</p><p>Destino: (4) Recuperar.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    9
+                ],
+                "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (6) Responder, módulo 9.</p><p>Destino: (7) Resumen del agente.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    1
+                ],
+                "content": "<p><strong>Webhook de (6) Responder</strong></p><p>Origen: (1) Gateway (módulo 2).</p><p>Destino: este escenario.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    23
+                ],
+                "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (6) Responder, módulo 23, solo si el mensaje pregunta por precios o mercado.</p><p>Destino: (13) Cotizar.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    27
+                ],
+                "content": "<p><strong>Calculadora de cartera (Make Code)</strong></p><p>Origen: precios devueltos por (13) Cotizar y posiciones del almacén Cartera.</p><p>Destino: variable <em>cotizaciones</em> que lee la respuesta (módulo 5). Calcula valor, coste y resultado por posición y total, sin intervención del modelo.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    41
+                ],
+                "content": "<p><strong>Calculadora general (Make Code)</strong></p><p>Origen: código JavaScript que escribe Gemini (módulo 40) cuando el mensaje pide una cuenta; el filtro rechaza código con acceso externo.</p><p>Destino: variable <em>calculo</em> que lee la respuesta (módulo 5).</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    50
+                ],
+                "content": "<p><strong>Percibir</strong></p><p>Primera fase del ciclo de Shoham: clasifica el mensaje del interlocutor en REQUEST, UNREQUEST o NINGUNO, con la conversación reciente como contexto, y saca la acción, el momento, la condición, los símbolos y el contenido.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    51
+                ],
+                "content": "<p><strong>Llamada a Comprometer</strong></p><p>Solo si hay REQUEST o UNREQUEST. Reenvía el token con el que llegó la llamada. La decisión que devuelve se guarda en la variable decision y la lee el prompt de respuesta.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
             }
-          ]
         ]
-      },
-      "mapper": {
-        "key": "rel|{{1.agente}}|{{1.chat_id}}",
-        "data": {
-          "agente": "{{1.agente}}",
-          "chat_id": "{{1.chat_id}}",
-          "resumen": "{{trim(11.result)}}",
-          "actualizado": "{{now}}"
-        },
-        "overwrite": true
-      },
-      "metadata": {
-        "designer": {
-          "x": 3600,
-          "y": 0
-        }
-      }
     }
-  ],
-  "metadata": {
-    "instant": true,
-    "version": 1,
-    "scenario": {
-      "roundtrips": 1,
-      "maxErrors": 3,
-      "autoCommit": true,
-      "autoCommitTriggerLast": true,
-      "sequential": false,
-      "slots": null,
-      "confidential": false,
-      "dataloss": false,
-      "dlq": false,
-      "freshVariables": false
-    },
-    "designer": {
-      "orphans": []
-    },
-    "zone": "eu1.make.com",
-    "notes": [
-      {
-        "moduleIds": [
-          1
-        ],
-        "content": "<p><strong>Webhook de (6) Responder</strong></p><p>Origen: (1) Gateway (módulo 2).</p><p>Destino: este escenario.</p>",
-        "isFilterNote": false,
-        "metadata": {
-          "color": "#9138FE"
-        }
-      },
-      {
-        "moduleIds": [
-          9
-        ],
-        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (6) Responder, módulo 9.</p><p>Destino: (7) Resumen del agente.</p>",
-        "isFilterNote": false,
-        "metadata": {
-          "color": "#9138FE"
-        }
-      },
-      {
-        "moduleIds": [
-          2
-        ],
-        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (6) Responder, módulo 2.</p><p>Destino: (4) Recuperar.</p>",
-        "isFilterNote": false,
-        "metadata": {
-          "color": "#9138FE"
-        }
-      },
-      {
-        "moduleIds": [
-          10
-        ],
-        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (6) Responder, módulo 10.</p><p>Destino: (4) Recuperar.</p>",
-        "isFilterNote": false,
-        "metadata": {
-          "color": "#9138FE"
-        }
-      }
-    ]
-  }
 }

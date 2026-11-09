@@ -1,117 +1,119 @@
 {
-  "name": "[Human_proxy] (10/11) | Despertador 05:00",
-  "flow": [
-    {
-      "id": 1,
-      "module": "datastore:GetRecord",
-      "version": 1,
-      "parameters": {
-        "datastore": null
-      },
-      "mapper": {
-        "key": "perfil|Borja",
-        "returnWrapped": false
-      },
-      "metadata": {
-        "designer": {
-          "x": 0,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 2,
-      "module": "http:MakeRequest",
-      "version": 4,
-      "parameters": {
-        "tlsType": "",
-        "authenticationType": "noAuth"
-      },
-      "filter": {
-        "name": "Perfil encontrado",
-        "conditions": [
-          [
-            {
-              "a": "{{1.resumen}}",
-              "o": "exist"
-            }
-          ]
-        ]
-      },
-      "mapper": {
-        "url": "https://hook.eu1.make.com/<WEBHOOK_PLANIFICAR>",
-        "method": "post",
-        "timeout": "60",
-        "contentType": "json",
-        "inputMethod": "jsonString",
-        "shareCookies": false,
-        "parseResponse": false,
-        "allowRedirects": true,
-        "stopOnHttpError": true,
-        "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"descripcion\": \"{{escapeJSON(1.resumen)}}\"}",
-        "requestCompressedContent": true
-      },
-      "metadata": {
-        "designer": {
-          "x": 300,
-          "y": 0
-        }
-      },
-      "onerror": [
+    "name": "[Human_proxy]:[Planning] (11/13) | Despertador",
+    "flow": [
         {
-          "id": 3,
-          "module": "builtin:Ignore",
-          "version": 1,
-          "metadata": {
-            "designer": {
-              "x": 300,
-              "y": 150
+            "id": 1,
+            "module": "datastore:GetRecord",
+            "version": 1,
+            "parameters": {
+                "datastore": null
+            },
+            "mapper": {
+                "key": "perfil|Borja",
+                "returnWrapped": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 0
+                }
             }
-          }
+        },
+        {
+            "id": 5,
+            "module": "datastore:AddRecord",
+            "version": 1,
+            "parameters": {
+                "datastore": null
+            },
+            "filter": {
+                "name": "Hay perfil y es laborable",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{1.resumen}}",
+                            "o": "exist"
+                        },
+                        {
+                            "a": "{{formatDate(now; \"d\"; \"Europe/Madrid\")}}",
+                            "b": "0",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "{{formatDate(now; \"d\"; \"Europe/Madrid\")}}",
+                            "b": "6",
+                            "o": "text:notequal"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "key": "agendar|{{1.agente}}|{{formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\")}}",
+                "data": {
+                    "linea": "(DO {{formatDate(now; \"DD/MM\"; \"Europe/Madrid\")}} 08:00 agendar «agenda financiera del día»)",
+                    "nivel": "0",
+                    "accion": "agendar",
+                    "agente": "{{1.agente}}",
+                    "creado": "{{now}}",
+                    "origen": "despertador",
+                    "momento": "{{addHours(parseDate(formatDate(now; \"YYYY-MM-DD\"; \"Europe/Madrid\"); \"YYYY-MM-DD\"; \"Europe/Madrid\"); 8)}}",
+                    "intentos": "0",
+                    "simbolos": "",
+                    "condicion": "",
+                    "contenido": "agenda financiera del día",
+                    "destinatario": "",
+                    "comprometido_con": "yo"
+                },
+                "overwrite": true
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 0
+                }
+            }
         }
-      ]
+    ],
+    "metadata": {
+        "instant": false,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": [
+            {
+                "moduleIds": [
+                    5
+                ],
+                "content": "<p><strong>Agenda como compromiso</strong></p><p>Los laborables deja en Compromisos la orden «agendar» para las 8:00. El intérprete la ejecuta: busca los eventos financieros del día y crea un compromiso de estudiar cada uno.</p><p>Destino: (07/14) Percibir: intérprete de compromisos.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    1
+                ],
+                "content": "<p><strong>Despertador</strong></p><p>Cada día a las 5:00 lee el perfil de Borja.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            }
+        ]
     }
-  ],
-  "metadata": {
-    "instant": false,
-    "version": 1,
-    "scenario": {
-      "roundtrips": 1,
-      "maxErrors": 3,
-      "autoCommit": true,
-      "autoCommitTriggerLast": true,
-      "sequential": false,
-      "slots": null,
-      "confidential": false,
-      "dataloss": false,
-      "dlq": false,
-      "freshVariables": false
-    },
-    "designer": {
-      "orphans": []
-    },
-    "zone": "eu1.make.com",
-    "notes": [
-      {
-        "moduleIds": [
-          2
-        ],
-        "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (10) Despertador, módulo 2.</p><p>Destino: (5) Planificar.</p>",
-        "isFilterNote": false,
-        "metadata": {
-          "color": "#9138FE"
-        }
-      },
-      {
-        "moduleIds": [
-          1
-        ],
-        "content": "<p><strong>Disparo programado</strong></p><p>Origen: la programación de Make.</p><p>Destino: este escenario, (10) Despertador.</p>",
-        "isFilterNote": false,
-        "metadata": {
-          "color": "#9138FE"
-        }
-      }
-    ]
-  }
 }
