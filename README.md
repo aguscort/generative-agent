@@ -1,6 +1,5 @@
-# Human_proxy
-
-Human_proxy es un bot de Telegram para conversar con **Borja**, un asesor financiero ficticio del Madrid de los 90. Borja recuerda lo que le cuentas, se forma una opinión sobre ti con el tiempo, sigue la actualidad financiera y cumple lo que acepta hacer. No hay comandos: se le escribe con naturalidad, y cada conversación tiene su propia memoria.
+# Generative Agent
+Se trata de un bot de Telegram para conversar con **Borja**, un asesor financiero ficticio del Madrid de los 90. Borja recuerda lo que le cuentas, se forma una opinión sobre ti con el tiempo, sigue la actualidad financiera y cumple lo que acepta hacer. No hay comandos: se le escribe con naturalidad, y cada conversación tiene su propia memoria.
 
 Está construido en Make.com sobre tres ideas, cada una tomada de un trabajo de investigación:
 
