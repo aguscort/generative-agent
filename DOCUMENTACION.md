@@ -7,8 +7,7 @@ Human_proxy implementa en Make.com la arquitectura de *Generative Agents: Intera
 | Memoria y diálogo (Park) | Gateway, Enviar, Escribir, Reflexionar, Recuperar, Responder, Resumen del agente | Activos |
 | Compromisos (Shoham) | Comprometer, Cumplir, Despertador. Percibir es un paso de Responder | Activos |
 | Asesor financiero | Estudiar, Interpelar, Noticias, Cotizar. La cartera y la calculadora están en Responder | Activos |
-| Ejecución por pasos | Actuar, Observar, Refinar | Creados y desactivados ([sección 18](#18-ejecución-en-desarrollo-15-actuar-16-observar-y-17-refinar)) |
-| Obsoletos | Planificar y la versión anterior de Percibir | Desactivados, con el prefijo «[OBSOLETO]» |
+| Ejecución por pasos | Actuar, Observar, Refinar | Creados y desactivados ([sección 17](#17-ejecución-en-desarrollo-15-actuar-16-observar-y-17-refinar)) |
 
 ## 1. Visión general
 
@@ -22,7 +21,7 @@ Un compromiso nace de tres sitios:
 2. **Las reflexiones del agente.** Si una conclusión exige actuar, Reflexionar envía a Comprometer una decisión (DECISION).
 3. **Reglas fijas.** El Despertador crea cada laborable la orden de hacer la agenda, y la agenda crea una orden de estudiar por evento.
 
-Cada compromiso queda en el almacén Compromisos con su momento y su estado. Cumplir lo revisa cada media hora y ejecuta los que han vencido. Nada se borra: un compromiso pasa a cumplido, fallido, liberado o caducado (sección 17).
+Cada compromiso queda en el almacén Compromisos con su momento y su estado. Cumplir lo revisa cada media hora y ejecuta los que han vencido. Nada se borra: un compromiso pasa a cumplido, fallido, liberado o caducado (sección 16).
 
 El repositorio incluye un agente de ejemplo, Borja: un asesor financiero ficticio de una firma de hedge funds del Madrid de los 90. Su personalidad parte de su descripción, guardada en un almacén de datos; la sección 3 recoge todos los sitios donde se configura. Lo propio de su oficio está en la acción «agendar», en Noticias, en Cotizar y en las rutas de cartera, cotizaciones y cálculo de Responder. Un agente de otro ámbito necesita su descripción y su nombre: no tendrá agenda financiera, pero conserva la memoria, la reflexión y los compromisos.
 
@@ -74,7 +73,7 @@ Los modelos son Gemini 3.8 Flash para el lenguaje natural y Gemini Embedding 2, 
 
 Cada escenario es una función: un webhook de entrada, un cuerpo JSON con sus parámetros y una respuesta, o un «Accepted» inmediato si trabaja en segundo plano. Solo el Gateway recibe de Telegram, y solo Enviar escribe en él, salvo dos avisos del propio Gateway (sección 4). Solo Escribir crea recuerdos y solo Recuperar hace la búsqueda puntuada.
 
-Todas las llamadas entre escenarios llevan un campo `token` en el cuerpo. Cada escenario con webhook lo comprueba en un filtro, «Token correcto», justo después del webhook, y no hace nada si no coincide (sección 23).
+Todas las llamadas entre escenarios llevan un campo `token` en el cuerpo. Cada escenario con webhook lo comprueba en un filtro, «Token correcto», justo después del webhook, y no hace nada si no coincide (sección 22).
 
 Un mensaje recorre el sistema así:
 
@@ -210,9 +209,9 @@ Toda la memoria vive en una sola tabla de Airtable, igual que en el paper, donde
 | Evidencias | Vínculo a registros de la misma tabla | Reflexionar | Recuerdos que justifican una reflexión |
 | Citada_por | Vínculo recíproco de Evidencias | Airtable | Reflexiones que citan este recuerdo |
 | Reflejada | Casilla | Reflexionar | La observación ya se ha contado para una reflexión |
-| Plan_ubicacion | Texto de una línea | Solo registros antiguos de Planificar | Lugar del bloque de plan |
-| Plan_inicio | Fecha con hora | Solo registros antiguos de Planificar | Inicio del bloque |
-| Plan_duracion_min | Número | Solo registros antiguos de Planificar | Duración en minutos |
+| Plan_ubicacion | Texto de una línea | Nadie; solo tienen valor los registros antiguos | Lugar del bloque de plan |
+| Plan_inicio | Fecha con hora | Nadie; solo tienen valor los registros antiguos | Inicio del bloque |
+| Plan_duracion_min | Número | Nadie; solo tienen valor los registros antiguos | Duración en minutos |
 
 Tres decisiones conviene tenerlas presentes. El paper guarda para cada objeto la descripción, la marca de creación y la de último acceso; aquí son Memoria, Creado y Ultimo_acceso, y el resto son añadidos para operar con varios agentes y conversaciones. El embedding se guarda como texto porque Airtable no tiene un tipo vectorial; ocupa unos 8–10 KB por fila y es la razón de que la recuperación tenga un techo de 300 registros. Evidencias es un vínculo real entre filas, así que el árbol de reflexiones del paper se puede navegar desde Airtable siguiendo Citada_por.
 
@@ -222,7 +221,7 @@ Escribir crea los registros con la conversión de tipos de Airtable (typecast) a
 
 Algunos textos siguen una convención porque otros escenarios buscan por ellos. Las observaciones que nacen de Interpelar empiezan por «{agente} le planteó una duda a». La agenda que guarda Cumplir empieza por «Agenda financiera de {agente} para hoy» y lo que escribe a un usuario por iniciativa propia, por «{agente} le escribió por iniciativa propia». Las lecturas de prensa de Noticias empiezan por «{agente} leyó en prensa».
 
-Los registros de tipo `plan` que dejó Planificar, y los de tipo `evento` de versiones anteriores, siguen en la tabla, pero ningún escenario los busca. Los compromisos no viven aquí sino en el almacén Compromisos: son el trabajo del agente, no su memoria. Lo que el agente hace o aprende al cumplirlos sí entra en la memoria, a través de Escribir.
+Los registros antiguos de tipo `plan` y `evento` siguen en la tabla, pero ningún escenario los busca. Los compromisos no viven aquí sino en el almacén Compromisos: son el trabajo del agente, no su memoria. Lo que el agente hace o aprende al cumplirlos sí entra en la memoria, a través de Escribir.
 
 ### Almacenes de datos de Make
 
@@ -232,7 +231,7 @@ Los registros de tipo `plan` que dejó Planificar, y los de tipo `evento` de ver
 | | `<agente>\|<chat_id>` | Resumen del agente en ese chat (escenario 7) |
 | | `rel\|<agente>\|<chat_id>` | Lo que el agente sabe de su interlocutor (escenario 6) |
 | Cartera (campos agente, chat_id, cartera, posiciones, actualizado) | `<agente>\|<chat_id>` | En `cartera`, un resumen en texto de las posiciones, los intereses y el horizonte del usuario; en `posiciones`, la lista estructurada en JSON. La escribe Responder y la leen Responder, Cumplir, Noticias y Actuar |
-| Compromisos (campos agente, comprometido_con, destinatario, accion, momento, condicion, simbolos, contenido, linea, origen, intentos, nivel, creado, estado, fin) | La genera Make; `agendar\|<agente>\|<fecha>` para la orden del Despertador | Un compromiso por registro, con su momento y su estado (sección 17) |
+| Compromisos (campos agente, comprometido_con, destinatario, accion, momento, condicion, simbolos, contenido, linea, origen, intentos, nivel, creado, estado, fin) | La genera Make; `agendar\|<agente>\|<fecha>` para la orden del Despertador | Un compromiso por registro, con su momento y su estado (sección 16) |
 
 El perfil es la base de la personalidad del agente. Quién lo lee y qué más da forma al personaje está al final de esta sección.
 
@@ -333,7 +332,7 @@ Escribir es la única puerta de entrada a la memoria: toda observación, reflexi
 | 7 | Tools · Numeric aggregator | Suma su importancia |
 | 8 | HTTP · POST a Reflexionar | Solo si la suma supera 150 y el recuerdo nuevo es una observación |
 
-Escribir no decide compromisos. Eso ocurre donde está el contexto completo: en Responder, que ve tu mensaje y la conversación (sección 9), y en Reflexionar, que ve las conclusiones (sección 6).
+Escribir no decide compromisos. Eso ocurre donde está el contexto completo: en Responder, que ve tu mensaje y la conversación (sección 8), y en Reflexionar, que ve las conclusiones (sección 6).
 
 ### Importancia
 
@@ -515,13 +514,7 @@ return {
 
 La salida trae el mismo resultado en tres formas: `memorias`, con las puntuaciones desglosadas, para depurar; `texto`, una lista numerada lista para un prompt (la usa Responder); y `texto_ids`, la misma lista con el ID de cada recuerdo (la usa Reflexionar para citar evidencias). Los módulos 7 y 8 se ejecutan después de responder, así que actualizar los accesos no añade latencia.
 
-## 8. (5) Planificar · obsoleto
-
-Planificar generaba cada día el plan del agente al estilo del paper: bloques de hasta una hora para cualquier agente y, para el agente financiero, la agenda de eventos del día en bloques de 30 minutos, guardados como recuerdos de tipo `plan`. Lo llamaban el Despertador y el Gateway, y lo leían Responder, para saber qué estaba haciendo el agente en cada momento, y la versión anterior de Percibir, que estudiaba cada hora el punto del plan que tocaba.
-
-Desde que la iniciativa del agente pasó a los compromisos (sección 17), el escenario está desactivado y lleva el prefijo «[OBSOLETO]»; nadie lo llama. La búsqueda de la agenda financiera vive ahora en la acción «agendar» de Cumplir (sección 14), con el mismo prompt. Su rama genérica, el plan narrativo de un personaje que no es Borja («7:30 desayuna, 9:00 abre la tienda»), no tiene equivalente, porque los compromisos solo recogen acciones que el bot sabe ejecutar.
-
-## 9. (6) Responder
+## 8. (6) Responder
 
 Responder genera lo que dice el agente con el prompt de diálogo del paper: quién es, qué hora es, qué compromisos tiene pendientes, qué sabe de su interlocutor, qué recuerda y qué se ha dicho. Antes percibe el mensaje: si pide algo o libera al agente de algo, obtiene la decisión de Comprometer. Suma además tres capacidades de su oficio, cada una en una ruta que solo se activa cuando el mensaje la necesita: registrar la cartera, consultar cotizaciones y hacer cuentas. No escribe en la memoria de la conversación; eso lo hace el Gateway después de enviar la respuesta, para que Responder pueda usarse desde otros canales o en pruebas.
 
@@ -810,7 +803,7 @@ Los compromisos se buscan en el almacén por agente, con momento anterior a la m
 
 Las variables pasan de una ruta a otra con Set variable y Get variable de alcance «roundtrip», porque una ruta de un router no puede leer los módulos de otra. Cada lectura cuesta un crédito.
 
-## 10. (7) Resumen del agente
+## 9. (7) Resumen del agente
 
 El Resumen del agente reconstruye quién es el agente a partir de su memoria con las tres consultas del paper: sus rasgos esenciales, su ocupación diaria actual y cómo se siente respecto a su progreso reciente. Responder lo añade a la instrucción de sistema, detrás de la descripción fija.
 
@@ -845,7 +838,7 @@ Responde en una o dos frases, en tercera persona y en texto plano (sin formato),
 
 La regeneración lanza las tres consultas contra Recuperar (k = 15) y resume cada una con Gemini en una o dos frases, o «sin datos» si no hay afirmaciones suficientes. Guarda el resultado con clave `agente|chat_id`, salvo que los tres apartados sean «sin datos»: así un chat nuevo no se queda una semana sin resumen. El interruptor está en el Gateway, que envía `"modo": "ON"`. Como la memoria es por chat, el agente puede verse distinto en cada conversación.
 
-## 11. (8) Estudiar
+## 10. (8) Estudiar
 
 Estudiar decide si un mensaje contiene una pregunta o un requerimiento profesional concreto que exija información verificable y, si es así, investiga en Google y guarda en memoria una pieza de conocimiento práctica. El Gateway le pasa cada mensaje después de responder, sin esperar.
 
@@ -894,7 +887,7 @@ El filtro del módulo 6 descarta la respuesta YA_SABIDO, así que solo se guarda
 
 No cuentan los saludos, la charla, las opiniones, los asuntos personales ni lo que se responde con sentido común. Falta un dato cuando la cuestión es profesional pero no se puede investigar con fiabilidad sin saber, por ejemplo, el país, la herramienta, la versión, el sector o el tipo de contrato. La respuesta del momento no usa la investigación; la usan los mensajes siguientes, a través de Recuperar.
 
-## 12. (9) Interpelar
+## 11. (9) Interpelar
 
 Interpelar escribe al usuario por iniciativa propia, en el personaje del agente, para resolver una duda concreta. Lo llaman Estudiar, cuando a una petición profesional le falta un dato imprescindible, y Cumplir, cuando al estudiar un evento le falta un dato de la cartera o cuando cumple un compromiso de preguntar.
 
@@ -919,7 +912,7 @@ Escribe el mensaje de Telegram que {{1.agente}} le enviaría por iniciativa prop
 
 Los dos límites evitan que el agente encadene preguntas, también en un día con muchos eventos. La pregunta queda en el historial: cuando el usuario contesta, Responder la ve en la conversación reciente y Estudiar recibe la respuesta como un mensaje nuevo que ya puede investigar.
 
-## 13. (10) Despertador
+## 12. (10) Despertador
 
 El Despertador arranca el día del agente aunque nadie escriba. Cada día a las 5:00, hora de Madrid, lee el perfil de Borja y, si es laborable, deja en Compromisos la orden «agendar» para las 8:00. Cumplir la ejecuta en su primera vuelta.
 
@@ -930,12 +923,12 @@ El Despertador arranca el día del agente aunque nadie escriba. Cada día a las 
 
 La clave fija por día evita duplicados si el escenario se ejecuta dos veces. Escribe directamente en el almacén, sin pasar por Comprometer, porque es una regla fija del sistema. La orden se crea sin estado; un compromiso sin estado cuenta como pendiente. Cuesta 2 créditos al día.
 
-## 14. (11) Cumplir: ejecución de compromisos
+## 13. (11) Cumplir: ejecución de compromisos
 
-Cumplir es la segunda fase del ciclo de AGENT-0: a intervalos fijos, ejecuta lo que el agente se ha comprometido a hacer y ya ha vencido. No percibe nada: la percepción está en Responder (sección 9).
+Cumplir es la segunda fase del ciclo de AGENT-0: a intervalos fijos, ejecuta lo que el agente se ha comprometido a hacer y ya ha vencido. No percibe nada: la percepción está en Responder (sección 8).
 
 > [!IMPORTANT]
-> Cumplir quedará como reloj cuando se active la ejecución por pasos de la [sección 18](#18-ejecución-en-desarrollo-15-actuar-16-observar-y-17-refinar). Hasta entonces ejecuta los compromisos con las acciones fijas que se describen aquí.
+> Cumplir quedará como reloj cuando se active la ejecución por pasos de la [sección 17](#17-ejecución-en-desarrollo-15-actuar-16-observar-y-17-refinar). Hasta entonces ejecuta los compromisos con las acciones fijas que se describen aquí.
 
 Se ejecuta cada 30 minutos los laborables de 8:00 a 20:30, hora de Madrid. Cada vuelta toma hasta 3 compromisos, del más antiguo al más reciente. Una vuelta sin nada vencido cuesta 1 crédito.
 
@@ -1023,9 +1016,9 @@ En caso contrario, redacta el mensaje de Telegram que {{1.agente}} le envía, co
 
 La ruta sin símbolos activa la búsqueda de Google, para comprobar condiciones o datos que no son precios.
 
-El estudio usa el campo `cartera` de cada chat, que Responder mantiene al día (sección 9).
+El estudio usa el campo `cartera` de cada chat, que Responder mantiene al día (sección 8).
 
-## 15. (12) Noticias
+## 14. (12) Noticias
 
 Noticias lee la prensa económica dos veces cada día laborable, a las 8:00 y a las 16:00, y guarda en la memoria de cada chat los titulares que afectan a la cartera de ese usuario, con su implicación. Es la percepción del entorno que el paper resuelve con un mundo simulado: aquí el entorno es lo que se publica.
 
@@ -1067,7 +1060,7 @@ Devuelve exclusivamente un JSON: {"noticias": [{"titular": "...", "implicacion":
 
 Noticias no escribe al usuario: lo que aprende queda en la memoria del chat y Responder lo recupera cuando la conversación lo hace relevante. Un ejemplo real: con Santander en cartera, guardó la caída de Telefónica y Santander tras las elecciones en Brasil y el peso de la exposición de Santander a ese país.
 
-## 16. (13) Cotizar
+## 15. (13) Cotizar
 
 Cotizar devuelve el último precio de hasta 5 valores o índices. Lo llaman Responder, cuando un mensaje pregunta por precios o mercado, y Cumplir, en los compromisos de informar o cotizar que llevan símbolos.
 
@@ -1089,7 +1082,7 @@ Un símbolo inexistente devuelve `precio: null` y el motivo en `error`, sin romp
 
 Yahoo Finance se eligió porque no necesita clave y cubre la Bolsa de Madrid. Alpha Vantage, la alternativa con clave gratuita, se descartó tras probarla: desde Make responde que se ha superado el límite diario ya en la primera petición, porque limita también por IP y Make comparte sus IPs de salida entre muchos usuarios. El endpoint de Yahoo no es una API oficial y puede cambiar o bloquearse sin aviso; si falla, Responder recibe «sin datos» y el agente dice que no tiene la cifra.
 
-## 17. Compromisos: el modelo de Shoham y (14) Comprometer
+## 16. Compromisos: el modelo de Shoham y (14) Comprometer
 
 ### El modelo
 
@@ -1099,13 +1092,13 @@ En la programación orientada a agentes de Shoham, el estado mental de un agente
 | --- | --- |
 | Creencias | La memoria (Memory Stream), la cartera y el perfil |
 | Capacidades | agendar, estudiar, cotizar e investigar (DO), informar (INFORM), preguntar (REQUEST) y abstenerse (REFRAIN), más el horario de trabajo |
-| Mensajes INFORM, REQUEST, UNREQUEST | Lo que escribe el usuario, clasificado por Percibir en Responder (sección 9) |
+| Mensajes INFORM, REQUEST, UNREQUEST | Lo que escribe el usuario, clasificado por Percibir en Responder (sección 8) |
 | Reglas de compromiso | Comprometer, deterministas; el Despertador y la acción agendar, fijas |
 | Compromiso con otro | Registro cuyo `comprometido_con` es un chat |
 | Decisión | Registro con `comprometido_con` «yo» |
 | Compromiso condicional, `IF (B φ)` | Registro con `condicion`; Cumplir la evalúa antes de actuar |
 | Fase 1 del ciclo | Percibir en Responder, y Comprometer |
-| Fase 2 del ciclo | Cumplir, cada 30 minutos (sección 14) |
+| Fase 2 del ciclo | Cumplir, cada 30 minutos (sección 13) |
 
 Los compromisos nacen de:
 
@@ -1220,14 +1213,14 @@ NADA. Borja no tenía ningún compromiso así con este chat.
 
 Los motivos de rechazo, en este orden: no sabe hacer eso o no le corresponde; no está claro qué tiene que hacer; no sabe a quién tendría que escribir; no sabe qué valores tiene que consultar; sería una cadena de compromisos demasiado larga; se comprometió a no hacerlo; ya lo tenía apuntado; tiene demasiados compromisos pendientes.
 
-## 18. Ejecución en desarrollo: (15) Actuar, (16) Observar y (17) Refinar
+## 17. Ejecución en desarrollo: (15) Actuar, (16) Observar y (17) Refinar
 
 > [!IMPORTANT]
-> Los tres escenarios están creados en Make y **desactivados**. Hasta que se activen, Cumplir sigue ejecutando con sus acciones fijas ([sección 14](#14-11-cumplir-ejecución-de-compromisos)).
+> Los tres escenarios están creados en Make y **desactivados**. Hasta que se activen, Cumplir sigue ejecutando con sus acciones fijas ([sección 13](#13-11-cumplir-ejecución-de-compromisos)).
 
 Hoy, Cumplir resuelve cada compromiso con una acción fija. La ejecución nueva trabaja como lo haría una persona: da un paso, mira el resultado y, si algo sale mal, corrige. Así, un compromiso puede pedir cualquier cosa que las herramientas del agente resuelvan, y nunca se da por cumplido sin comprobarlo.
 
-El reparto de papeles es el de Reflexion ([sección 25](#25-referencias)): Actuar es el actor, Observar el evaluador y Refinar la autorreflexión.
+El reparto de papeles es el de Reflexion ([sección 24](#24-referencias)): Actuar es el actor, Observar el evaluador y Refinar la autorreflexión.
 
 ```mermaid
 flowchart LR
@@ -1421,7 +1414,7 @@ Deja vacíos los campos que no correspondan.
 - [ ] **Compromisos** tiene el campo `criterio`, que redactan Percibir y Reflexionar y valida Comprometer. Con él, Comprometer deja de limitar los compromisos a una lista de acciones y rechaza lo que no pueda resolverse con las herramientas.
 - [ ] **Token:** el real en los filtros de los tres y en la llamada de Cumplir a Actuar. Después, activarlos y probarlos.
 
-## 19. (18) Enviar
+## 18. (18) Enviar
 
 Enviar es la salida de todo lo que escribe el agente. Recibe un chat y un texto, lo manda por Telegram y, si quien llama le pasa una memoria, la guarda con Escribir. Así, enviar y memorizar van siempre juntos y en un solo sitio: para cambiar de canal, por ejemplo a una aplicación propia, basta con cambiar este escenario.
 
@@ -1448,9 +1441,9 @@ Enviar no comprueba vetos: lo hace quien llama, porque solo él sabe si el mensa
 
 Quien necesita saber si el mensaje salió lee la respuesta. Cumplir solo marca un aviso como cumplido si contiene «enviado», y Observar hace la misma comprobación con el paso enviar de Actuar; «FALLO» y «Accepted» no la pasan.
 
-Cuesta 4 créditos por envío con memoria y 3 sin ella, que se suman a los de quien llama (sección 22).
+Cuesta 4 créditos por envío con memoria y 3 sin ella, que se suman a los de quien llama (sección 21).
 
-## 20. Contratos de los webhooks
+## 19. Contratos de los webhooks
 
 Cada escenario con webhook se invoca con un POST JSON (`Content-Type: application/json`). Todos exigen el campo `token`; sin él, o con uno distinto, el escenario no hace nada y Make responde 200 «Accepted».
 
@@ -1465,7 +1458,7 @@ Cada escenario con webhook se invoca con un POST JSON (`Content-Type: applicatio
 | Interpelar (9) | `https://hook.eu1.make.com/<WEBHOOK_INTERPELAR>` | `token`, `agente`, `chat_id`, `motivo`; opcionales `usuario`, `contexto`, `descripcion` | «Accepted»; manda la pregunta con Enviar |
 | Cotizar (13) | `https://hook.eu1.make.com/<WEBHOOK_COTIZAR>` | `token`, `simbolos` (hasta 5, separados por comas) | 200 `{"precios": [{"simbolo", "nombre", "precio", "cierre_anterior", "moneda", "hora", "error"}]}` |
 | Comprometer (14) | `https://hook.eu1.make.com/<WEBHOOK_COMPROMETER>` | `token`, `acto` (REQUEST, UNREQUEST o DECISION), `agente`, `chat`, `accion`, `contenido`; opcionales `dia` (AAAA-MM-DD), `hora` (HH:mm), `fin` (AAAA-MM-DD), `condicion`, `simbolos`, `libera` (claves separadas por comas), `repite`, `vetado_por`, `origen`, `nivel` | 200, texto: ACEPTADO, RECHAZADO, LIBERADO o NADA |
-| Actuar (15) | `https://hook.eu1.make.com/<WEBHOOK_ACTUAR>` | El cuerpo común (sección 18) | «Accepted»; desactivado |
+| Actuar (15) | `https://hook.eu1.make.com/<WEBHOOK_ACTUAR>` | El cuerpo común (sección 17) | «Accepted»; desactivado |
 | Observar (16) | `https://hook.eu1.make.com/<WEBHOOK_OBSERVAR>` | El cuerpo común más `herramienta`, `parametros`, `motivo_paso` y `resultado` | «Accepted»; desactivado |
 | Refinar (17) | `https://hook.eu1.make.com/<WEBHOOK_REFINAR>` | El cuerpo común más `motivo` | «Accepted»; desactivado |
 | Enviar (18) | `https://hook.eu1.make.com/<WEBHOOK_ENVIAR>` | `token`, `agente`, `chat_id`, `texto`; opcionales `memoria`, `tipo` (observacion), `autor` (agente), `nivel` | 200, texto: `enviado <message_id>: <texto>`, o `FALLO: …` si Telegram no lo acepta |
@@ -1495,7 +1488,7 @@ POST Enviar
 {"token": "<TOKEN>", "agente": "Borja", "chat_id": "123456789", "texto": "Inditex abre a 47,10 €, un 0,8 % arriba.", "memoria": "Borja le escribió por iniciativa propia: «Inditex abre a 47,10 €, un 0,8 % arriba.»", "tipo": "observacion", "autor": "agente"}
 ```
 
-## 21. Fidelidad al paper
+## 20. Fidelidad al paper
 
 La memoria sigue el paper en lo que la define: el registro único, la importancia asignada por el LLM, la fórmula de recuperación y el ciclo de reflexión con citas. Las desviaciones vienen de pasar de un mundo simulado a una conversación de chat y de los límites de Make y Airtable.
 
@@ -1506,7 +1499,7 @@ La memoria sigue el paper en lo que la define: el registro único, la importanci
 | Recencia | 0,995 por hora de juego desde el último acceso | 0,995 por hora real | Fiel en la forma; cambia la escala temporal |
 | Relevancia | Coseno entre embeddings | Coseno, Gemini Embedding 2, 768 dimensiones | Fiel |
 | Combinación | Min-max a [0, 1] y suma con α = 1 | Igual | Fiel |
-| Candidatos | Toda la memoria del agente | Los 300 registros más recientes del chat | Desviación por límite técnico (sección 23) |
+| Candidatos | Toda la memoria del agente | Los 300 registros más recientes del chat | Desviación por límite técnico (sección 22) |
 | Cuántos se recuperan | Los que caben en el contexto | k fijo, 10 por defecto | Simplificación razonable |
 | Disparo de reflexión | Suma de importancia reciente > 150 | Suma de observaciones no reflejadas > 150 | Fiel |
 | Preguntas focales | 3, a partir de los 100 registros más recientes | Igual | Fiel |
@@ -1514,7 +1507,7 @@ La memoria sigue el paper en lo que la define: el registro único, la importanci
 | Árbol de reflexiones | Las reflexiones pueden citar reflexiones | Igual, vía Evidencias / Citada_por | Fiel |
 | Resumen del agente | Generado desde la memoria y cacheado | Las tres consultas del paper, caché de 7 días | Fiel; la descripción fija sigue siendo la base |
 | Diálogo | Recupera lo que sabe del interlocutor antes de hablar | Resumen de la relación, caché de 24 h; además, sus compromisos y la decisión sobre el mensaje | Fiel |
-| Planificación | Plan diario, por horas y por tramos de 5–15 minutos | No hay plan: la agenda del día se convierte en compromisos de estudiar cada evento | Sustituida por los compromisos de Shoham (sección 17) |
+| Planificación | Plan diario, por horas y por tramos de 5–15 minutos | No hay plan: la agenda del día se convierte en compromisos de estudiar cada evento | Sustituida por los compromisos de Shoham (sección 16) |
 | Percibir y reaccionar | El agente percibe su entorno en cada paso y decide si reacciona y replanifica | Percibe cada mensaje; Cumplir ejecuta cada media hora lo vencido; la prensa se lee dos veces al día | Parcial: reacciona a mensajes y compromisos, no a cada cambio del entorno |
 | Ámbito de la memoria | Un agente, un mundo | Un agente por chat | Decisión deliberada: el agente no mezcla lo que le cuentan usuarios distintos |
 | Entorno y otros agentes | Mundo simulado con espacios y varios agentes | No existe | Inherente al canal |
@@ -1529,7 +1522,7 @@ Se aparta en tres cosas:
 2. Las condiciones las evalúa Gemini con las cotizaciones o la búsqueda de Google delante, no un operador lógico sobre las creencias.
 3. El ciclo va cada 30 minutos y solo en horario de trabajo, y no hay mensajes entre agentes.
 
-## 22. Costes
+## 21. Costes
 
 Con un usuario, el sistema gasta unos 3.400–3.900 créditos de Make al mes antes de que nadie converse, según una estimación hecha con los créditos medidos de cada pieza: Cumplir (≈ 550 en vueltas sin nada que hacer, ≈ 480 en la agenda diaria y ≈ 1.600 en el estudio de eventos), Noticias (≈ 750–1.250) y el Despertador (≈ 60). En el coste manda Make, no Gemini: los créditos son el 85–90 % de cada ejecución.
 
@@ -1599,7 +1592,7 @@ Un plan de 10.000 créditos da para el gasto fijo y unas cuantas conversaciones 
 
 Fuentes: [precios de la API de Gemini](https://ai.google.dev/gemini-api/docs/pricing), [Gemini 3.8 Flash, Layer3 Labs](https://www.layer3labs.io/guides/gemini-3-8-flash-pricing), [Gemini Embedding 2, Maxim](https://www.getmaxim.ai/bifrost/llm-cost-calculator/provider/gemini/model/gemini-embedding-2), [precios de Make](https://www.make.com/en/pricing), [Make Code](https://apps.make.com/code.md), [precios de Make, Jetadmin](https://www.jetadmin.io/blog/make-pricing/), [cambio oficial del euro, BOE 20/10/2026](https://www.boe.es/boe/dias/2026/10/20/pdfs/BOE-A-2026-21865.pdf).
 
-## 23. Limitaciones y riesgos
+## 22. Limitaciones y riesgos
 
 ### Escala de la memoria
 
@@ -1654,14 +1647,14 @@ El conocimiento que guardan Estudiar, Cumplir y Noticias compite en desventaja e
 
 ### Mejoras posibles
 
-1. Terminar la ejecución por pasos (sección 18). Con Observar, ninguna llamada bloqueada por el token se da por cumplida.
+1. Terminar la ejecución por pasos (sección 17). Con Observar, ninguna llamada bloqueada por el token se da por cumplida.
 2. Evaluar las condiciones de precio con una comparación numérica en lugar de con Gemini, y revisarlas con más frecuencia.
 3. Archivar los compromisos en estado final para no llenar el almacén.
 4. Dar una importancia fija alta al tipo conocimiento para que compita en la recuperación.
 5. Añadir manejadores de error al resto de escenarios, empezando por el aviso 967 del Gateway, y extraer el número de la importancia con una expresión regular.
 6. Convertir divisas en la valoración de la cartera para dar un total único.
 
-## 24. Operación
+## 23. Operación
 
 ### Pruebas aisladas
 
@@ -1703,7 +1696,7 @@ Al reactivar un escenario que Make desactivó por un error, aparece la opción d
 
 Borrar filas de Memory Stream es seguro: no hay contadores derivados salvo Reflejada, y Citada_por se recalcula solo. Para reiniciar a un agente en un chat basta con borrar sus filas por Agente y Chat_ID. Cambiar el modelo o la dimensión de los embeddings obliga a recalcular el campo Embedding de todas las filas. Para trasladar recuerdos de una conversación a otra se cambia su Chat_ID. Los compromisos se pueden editar a mano en el almacén. Para anular uno, cambia su estado a liberado en lugar de borrarlo.
 
-## 25. Referencias
+## 24. Referencias
 
 ### Qué paper sigue cada sección
 
@@ -1712,12 +1705,11 @@ Borrar filas de Memory Stream es seguro: no hay contadores derivados salvo Refle
 | 5. Escribir | Park *et al.* (2023), apartado 4.1 | La puntuación de importancia de cada recuerdo |
 | 6. Reflexionar | Park *et al.* (2023), apartado 4.2 | Preguntas focales, evidencias y reflexiones que citan sus recuerdos |
 | 7. Recuperar | Park *et al.* (2023), apartado 4.1 | La puntuación combinada de recencia, importancia y relevancia |
-| 8. Planificar · obsoleto | Park *et al.* (2023), apartado 4.3 | El plan diario, que se abandonó |
-| 9. Responder | Park *et al.* (2023) y Shoham (1993) | El diálogo con memoria y resumen del interlocutor, del primero; la clasificación de actos de habla en Percibir, del segundo |
-| 10. Resumen del agente | Park *et al.* (2023) | Las tres consultas sobre el propio agente |
-| 13. Despertador, 14. Cumplir y 17. Comprometer | Shoham (1993) | Estado mental, reglas de compromiso, actos REQUEST y UNREQUEST, abstención (REFRAIN) y ciclo del intérprete AGENT-0 |
-| 18. Ejecución en desarrollo | Shinn *et al.* (2023) | Los tres papeles del bucle: actor (Actuar), evaluador (Observar) y autorreflexión (Refinar) |
-| 21. Fidelidad al paper | Park *et al.* (2023) y Shoham (1993) | La comparación entre el diseño de cada paper y su implementación |
+| 8. Responder | Park *et al.* (2023) y Shoham (1993) | El diálogo con memoria y resumen del interlocutor, del primero; la clasificación de actos de habla en Percibir, del segundo |
+| 9. Resumen del agente | Park *et al.* (2023) | Las tres consultas sobre el propio agente |
+| 12. Despertador, 13. Cumplir y 16. Comprometer | Shoham (1993) | Estado mental, reglas de compromiso, actos REQUEST y UNREQUEST, abstención (REFRAIN) y ciclo del intérprete AGENT-0 |
+| 17. Ejecución en desarrollo | Shinn *et al.* (2023) | Los tres papeles del bucle: actor (Actuar), evaluador (Observar) y autorreflexión (Refinar) |
+| 20. Fidelidad al paper | Park *et al.* (2023) y Shoham (1993) | La comparación entre el diseño de cada paper y su implementación |
 
 ### Bibliografía
 

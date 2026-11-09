@@ -1,6 +1,6 @@
-# Generative Agent
+# Human_proxy
 
-Se trata de un bot de Telegram para conversar con **Borja**, un asesor financiero. Borja recuerda lo que le cuentas, se forma una opinión sobre ti con el tiempo, sigue la actualidad financiera y cumple lo que acepta hacer. No hay comandos: se le escribe con naturalidad, y cada conversación tiene su propia memoria.
+Human_proxy es un bot de Telegram para conversar con **Borja**, un asesor financiero ficticio del Madrid de los 90. Borja recuerda lo que le cuentas, se forma una opinión sobre ti con el tiempo, sigue la actualidad financiera y cumple lo que acepta hacer. No hay comandos: se le escribe con naturalidad, y cada conversación tiene su propia memoria.
 
 Está construido en Make.com sobre tres ideas, cada una tomada de un trabajo de investigación:
 
@@ -136,7 +136,6 @@ Cada compromiso admite como mucho 5 pasos y 2 correcciones. Los mensajes solo va
 | `blueprints/02_memoria_escribir.blueprint.json` | (2) Escribir | Webhook |
 | `blueprints/03_memoria_reflexionar.blueprint.json` | (3) Reflexionar | Webhook |
 | `blueprints/04_memoria_recuperar.blueprint.json` | (4) Recuperar | Webhook |
-| `blueprints/05_planificar.blueprint.json` | (5) Planificar · obsoleto | Desactivado |
 | `blueprints/06_responder.blueprint.json` | (6) Responder | Webhook |
 | `blueprints/07_resumen_agente.blueprint.json` | (7) Resumen del agente | Webhook |
 | `blueprints/08_estudiar.blueprint.json` | (8) Estudiar | Webhook |
@@ -151,13 +150,11 @@ Cada compromiso admite como mucho 5 pasos y 2 correcciones. Los mensajes solo va
 | `blueprints/17_refinar.blueprint.json` | (17) Refinar · en desarrollo | Webhook, desactivado |
 | `blueprints/18_enviar.blueprint.json` | (18) Enviar | Webhook |
 
-Planificar y la versión anterior de Percibir siguen en Make, desactivados y con el prefijo «[OBSOLETO]». No hacen falta para que el sistema funcione; Planificar se incluye como referencia.
-
 Cada blueprint lleva notas de Make en sus webhooks y en sus llamadas, con el origen y el destino de cada una.
 
 ## Requisitos
 
-- Una cuenta de Make.com con plan de pago, porque la calculadora usa Make Code. Con un usuario, el sistema gasta unos 3.400–3.900 créditos al mes antes de conversar (sección 22 de la documentación).
+- Una cuenta de Make.com con plan de pago, porque la calculadora usa Make Code. Con un usuario, el sistema gasta unos 3.400–3.900 créditos al mes antes de conversar (sección 21 de la documentación).
 - Una base de Airtable, una clave de la API de Gemini y un bot de Telegram.
 - Opcional: Slack, para registrar las conversaciones en un canal.
 
@@ -172,7 +169,7 @@ Las cotizaciones y la prensa no necesitan clave.
 2. Crea en Make tres almacenes de datos:
    - **Caché:** agente, chat_id, resumen y actualizado. Guarda en ella el registro `perfil|<agente>` con la descripción del personaje.
    - **Cartera:** agente, chat_id, cartera, posiciones y actualizado.
-   - **Compromisos:** los quince campos de la sección 17, incluidos `estado` y `fin`.
+   - **Compromisos:** los quince campos de la sección 16, incluidos `estado` y `fin`.
 3. Importa los blueprints. Crea primero todos los webhooks y después rellena las llamadas, porque hay dependencias circulares: Escribir llama a Reflexionar y Reflexionar a Escribir.
 4. Elige un token secreto y ponlo en lugar de `<TOKEN>`, en los filtros «Token correcto» y en los cuerpos de las llamadas. Es el mismo en todos.
 5. Sustituye el resto de marcadores (tabla siguiente). Las notas de cada webhook dicen qué módulos lo llaman.
@@ -202,4 +199,4 @@ Las cotizaciones y la prensa no necesitan clave.
 
 - **Token.** Cada llamada entre escenarios lleva el token, y cada escenario con webhook lo comprueba antes de hacer nada. Un webhook bloqueado por el token responde igualmente 200, así que el error no se ve desde fuera: se ve en el historial del escenario.
 - **Datos.** Airtable guarda literalmente lo que cada usuario dice al bot; Cartera, sus inversiones; Compromisos, lo que el agente le ha prometido. Si el bot lo usan otras personas, deben saberlo.
-- **Código.** La ruta de cálculo ejecuta el código que escribe el modelo, en el entorno aislado de Make y tras un filtro de patrones. Si el bot va a hablar con desconocidos, lee la sección 23 de la documentación.
+- **Código.** La ruta de cálculo ejecuta el código que escribe el modelo, en el entorno aislado de Make y tras un filtro de patrones. Si el bot va a hablar con desconocidos, lee la sección 22 de la documentación.
