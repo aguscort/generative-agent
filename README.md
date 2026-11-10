@@ -1,5 +1,6 @@
-# Generative Agent
-Se trata de un bot de Telegram para conversar con **Borja**, un asesor financiero. Borja recuerda lo que le cuentas, se forma una opinión sobre ti con el tiempo, sigue la actualidad financiera y cumple lo que acepta hacer. No hay comandos: se le escribe con naturalidad, y cada conversación tiene su propia memoria.
+# Human_proxy
+
+Human_proxy es un bot de Telegram para conversar con **Borja**, un asesor financiero ficticio del Madrid de los 90. Borja recuerda lo que le cuentas, se forma una opinión sobre ti con el tiempo, sigue la actualidad financiera y cumple lo que acepta hacer. No hay comandos: se le escribe con naturalidad, y cada conversación tiene su propia memoria.
 
 Está construido en Make.com sobre tres ideas, cada una tomada de un trabajo de investigación:
 
@@ -7,7 +8,7 @@ Está construido en Make.com sobre tres ideas, cada una tomada de un trabajo de 
 | --- | --- | --- |
 | [Memoria](#memoria) | ¿Qué sabe Borja y qué recuerda en cada momento? | Park *et al.* (2023), *Generative Agents* |
 | [Planificación](#planificación) | ¿A qué se compromete y cuándo? | Shoham (1993), *Agent-oriented programming* |
-| [Ejecución](#ejecución-en-desarrollo) | ¿Cómo cumple lo que ha prometido? | Shinn *et al.* (2023), *Reflexion* |
+| [Ejecución](#ejecución) | ¿Cómo cumple lo que ha prometido? | Shinn *et al.* (2023), *Reflexion* |
 
 La memoria vive en Airtable, los compromisos en un almacén de datos de Make y el lenguaje lo pone Gemini.
 
@@ -24,7 +25,7 @@ La memoria vive en Airtable, los compromisos en un almacén de datos de Make y e
 | **Cumple** | Cada media hora, en su horario, hace lo que tiene pendiente. Si no puede cumplir algo que te prometió, te avisa. |
 | **Lee la prensa** | Dos veces al día guarda los titulares que afectan a tu cartera, con lo que implican. |
 | **Lleva tu cartera, cotiza y calcula** | Apunta las posiciones que le cuentas, consulta precios en Yahoo Finance y resuelve las cuentas con código, no a ojo. |
-| **Estudia** | Si le haces una pregunta profesional que no sabe responder, investiga en la web y guarda lo aprendido. |
+| **Estudia** | Si le haces una pregunta profesional que exige consultar datos, investiga en la web y guarda lo aprendido. |
 
 Las tres partes trabajan juntas: lo que dices entra en la memoria y en la planificación; la planificación deja compromisos; la ejecución los cumple, y lo que hace vuelve a la memoria.
 
@@ -94,16 +95,13 @@ Comprometer también ajusta el momento al horario de Borja (laborables de 8:00 a
 
 **Referencia.** Shoham, Y. (1993). *Agent-oriented programming*. Artificial Intelligence, 60(1), 51–92. [doi:10.1016/0004-3702(93)90034-9](https://doi.org/10.1016/0004-3702(93)90034-9). De ahí salen el estado mental del agente (creencias, capacidades y compromisos), las reglas de compromiso, los actos de pedir (REQUEST) y liberar (UNREQUEST), la abstención (REFRAIN) y el ciclo del intérprete AGENT-0.
 
-## Ejecución (en desarrollo)
-
-> [!IMPORTANT]
-> (15) Actuar, (16) Observar y (17) Refinar están creados en Make y **desactivados**. Mientras tanto, (11) Cumplir ejecuta los compromisos con acciones fijas.
+## Ejecución
 
 **Para qué sirve.** Para que Borja cumpla lo que ha prometido y compruebe que lo ha logrado antes de darlo por hecho.
 
-**Hoy.** Cada media hora, en horario de trabajo, (11) Cumplir toma los compromisos vencidos y ejecuta cada uno con una de seis acciones fijas: agendar, estudiar, informar, preguntar, investigar o cotizar. Antes de actuar reserva el compromiso, para no hacerlo dos veces, y al terminar lo marca como cumplido. Si falla tres veces, lo marca como fallido; si pasa su fecha de fin, como caducado. En los dos casos te avisa si te lo había prometido.
+**La idea.** Borja trabaja por pasos, como lo haría una persona: hace algo, mira el resultado y corrige si hace falta. Así un compromiso puede pedir cualquier cosa que sus herramientas resuelvan, y ninguno se da por cumplido sin comprobarlo.
 
-**La idea de la versión nueva.** En lugar de una acción fija por compromiso, Borja trabaja por pasos, como lo haría una persona: hace algo, mira el resultado y corrige si hace falta. Así un compromiso puede pedir cualquier cosa que sus herramientas resuelvan.
+**Cómo funciona.** Cada media hora, en horario de trabajo, (11) Cumplir toma los compromisos vencidos. Antes de nada reserva cada uno, para no hacerlo dos veces. Las dos rutinas del agente, agendar el día y estudiar un evento, las resuelve él mismo. Todo lo demás se lo pasa a tres escenarios que se llaman en cadena:
 
 | Escenario | Papel | Ejemplo con «Mañana a las 10 dime cómo abre Inditex» |
 | --- | --- | --- |
@@ -111,13 +109,10 @@ Comprometer también ajusta el momento al horario de Borja (laborables de 8:00 a
 | **(16) Observar** | Comprueba sin modelo que la herramienta respondió bien y luego, con Gemini, si ya se cumple el compromiso | Ve que hay precio y pide el paso siguiente; luego ve que el mensaje salió y lo cierra |
 | **(17) Refinar** | Si algo falla, decide: corregir el paso, aplazarlo o darlo por fallido | Si Cotizar no reconoce el símbolo, ordena repetir con el correcto |
 
-Cada compromiso admite como mucho 5 pasos y 2 correcciones. Los mensajes solo van al destinatario del compromiso y respetan sus vetos, y ningún paso puede crear compromisos nuevos ni decidir qué entra en la memoria.
+Cada compromiso admite como mucho 5 pasos y 2 correcciones. Los mensajes solo van al destinatario del compromiso y respetan sus vetos, y ningún paso puede crear compromisos nuevos ni decidir qué entra en la memoria. Si un compromiso falla tres veces, queda como fallido; si pasa su fecha de fin, como caducado. En los dos casos Borja te avisa si te lo había prometido.
 
-**Pendiente antes de activarlos:**
-
-- [ ] Que Interpelar responda con lo que envía, para que Observar sepa si la pregunta salió.
-- [ ] Que Cumplir pase los compromisos a Actuar en lugar de ejecutarlos él.
-- [ ] Que cada compromiso lleve un criterio de cumplimiento: qué tiene que haber pasado para darlo por hecho.
+> [!NOTE]
+> Comprometer sigue aceptando solo las acciones de una lista cerrada (agendar, estudiar, informar, preguntar, investigar, cotizar y abstenerse). La ejecución por pasos ya admite cualquier encargo que sus herramientas resuelvan; abrir esa lista es el paso que falta para aprovecharlo.
 
 **Referencia.** Shinn, N. *et al.* (2023). *Reflexion: Language Agents with Verbal Reinforcement Learning*. NeurIPS 2023. [arXiv:2303.11366](https://arxiv.org/abs/2303.11366). Su arquitectura tiene los mismos tres papeles:
 
@@ -144,9 +139,9 @@ Cada compromiso admite como mucho 5 pasos y 2 correcciones. Los mensajes solo va
 | `blueprints/12_noticias.blueprint.json` | (12) Noticias | Laborables, 8:00 y 16:00 |
 | `blueprints/13_cotizar.blueprint.json` | (13) Cotizar | Webhook |
 | `blueprints/14_comprometer.blueprint.json` | (14) Comprometer | Webhook |
-| `blueprints/15_actuar.blueprint.json` | (15) Actuar · en desarrollo | Webhook, desactivado |
-| `blueprints/16_observar.blueprint.json` | (16) Observar · en desarrollo | Webhook, desactivado |
-| `blueprints/17_refinar.blueprint.json` | (17) Refinar · en desarrollo | Webhook, desactivado |
+| `blueprints/15_actuar.blueprint.json` | (15) Actuar | Webhook |
+| `blueprints/16_observar.blueprint.json` | (16) Observar | Webhook |
+| `blueprints/17_refinar.blueprint.json` | (17) Refinar | Webhook |
 | `blueprints/18_enviar.blueprint.json` | (18) Enviar | Webhook |
 
 Cada blueprint lleva notas de Make en sus webhooks y en sus llamadas, con el origen y el destino de cada una.
@@ -166,11 +161,11 @@ Las cotizaciones y la prensa no necesitan clave.
 
 1. Crea en Airtable la tabla Memory Stream con los campos de la sección 3.
 2. Crea en Make tres almacenes de datos:
-   - **Caché:** agente, chat_id, resumen y actualizado. Guarda en ella el registro `perfil|<agente>` con la descripción del personaje.
+   - **Caché:** agente, chat_id, resumen, actualizado y token. Guarda en ella el registro `perfil|<agente>` con la descripción del personaje en `resumen` y el token secreto en `token`.
    - **Cartera:** agente, chat_id, cartera, posiciones y actualizado.
    - **Compromisos:** los quince campos de la sección 16, incluidos `estado` y `fin`.
 3. Importa los blueprints. Crea primero todos los webhooks y después rellena las llamadas, porque hay dependencias circulares: Escribir llama a Reflexionar y Reflexionar a Escribir.
-4. Elige un token secreto y ponlo en lugar de `<TOKEN>`, en los filtros «Token correcto» y en los cuerpos de las llamadas. Es el mismo en todos.
+4. Elige un token secreto. Ponlo en lugar de `<TOKEN>` en el filtro «Token correcto» de cada escenario con webhook y en el campo `token` del registro `perfil|<agente>`. Es el mismo en todos, y no hay que escribirlo en ninguna llamada.
 5. Sustituye el resto de marcadores (tabla siguiente). Las notas de cada webhook dicen qué módulos lo llaman.
 6. Elige en cada módulo las conexiones y los almacenes de datos, que llegan vacíos.
 7. Fija la programación, toda en hora de Madrid:
@@ -196,6 +191,6 @@ Las cotizaciones y la prensa no necesitan clave.
 > [!CAUTION]
 > No publiques las URLs de los webhooks ni el token. Si se expone alguno, regenera el webhook o cambia el token en todos los escenarios a la vez.
 
-- **Token.** Cada llamada entre escenarios lleva el token, y cada escenario con webhook lo comprueba antes de hacer nada. Un webhook bloqueado por el token responde igualmente 200, así que el error no se ve desde fuera: se ve en el historial del escenario.
+- **Token.** Cada llamada entre escenarios lleva el token, y cada escenario con webhook lo comprueba antes de hacer nada. El Gateway, Cumplir y Noticias lo leen del perfil del agente; los demás reenvían el que reciben. Un webhook bloqueado por el token responde igualmente 200, así que el error no se ve desde fuera: se ve en el historial del escenario.
 - **Datos.** Airtable guarda literalmente lo que cada usuario dice al bot; Cartera, sus inversiones; Compromisos, lo que el agente le ha prometido. Si el bot lo usan otras personas, deben saberlo.
 - **Código.** La ruta de cálculo ejecuta el código que escribe el modelo, en el entorno aislado de Make y tras un filtro de patrones. Si el bot va a hablar con desconocidos, lee la sección 22 de la documentación.
