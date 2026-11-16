@@ -1,0 +1,388 @@
+{
+    "name": "[Human_proxy]:[02-Memoria] (06/20) | Consolidar/Olvidar",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": "__HOOK_OLVIDAR__",
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 450
+                },
+                "setupValidation": {
+                    "result": {
+                        "valid": true,
+                        "fields": []
+                    },
+                    "version": 1,
+                    "configuration": "130d733f1876e087"
+                },
+                "restore": {
+                    "parameters": {
+                        "hook": {
+                            "data": {
+                                "editable": "true"
+                            },
+                            "label": "[Human_proxy] Olvidar"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "hook",
+                        "type": "hook:gateway-webhook",
+                        "label": "Webhook",
+                        "required": true
+                    },
+                    {
+                        "name": "maxResults",
+                        "type": "number",
+                        "label": "Maximum number of results"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "module": "airtable:ActionSearchRecords",
+            "version": 3,
+            "parameters": {
+                "__IMTCONN__": "__CONEXION_AIRTABLE__"
+            },
+            "filter": {
+                "name": "Llega el agente",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{1.agente}}",
+                            "o": "exist"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "base": "__BASE_AIRTABLE__",
+                "table": "__TABLA_MEMORY_STREAM__",
+                "fields": [
+                    "Tipo"
+                ],
+                "formula": "AND({Agente}=\"{{1.agente}}\", {Tipo}=\"observacion\", {Reflejada}, LEN({Importancia}&\"\")>0, {Importancia}<4, NOT({Citada_por}), IS_BEFORE(CREATED_TIME(), DATEADD(TODAY(), -15, 'days')))",
+                "maxRecords": "1000",
+                "useColumnId": false,
+                "formulaField": "formula"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 450
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "airtable2"
+                            },
+                            "label": "My Airtable OAuth connection"
+                        }
+                    }
+                }
+            },
+            "onerror": [
+                {
+                    "id": 902,
+                    "module": "gateway:WebhookRespond",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {
+                        "body": "{\"error\": \"Olvidar › búsqueda de recuerdos a olvidar (Airtable)\"}",
+                        "status": "500",
+                        "headers": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "metadata": {
+                        "designer": {
+                            "x": 600,
+                            "y": 900
+                        }
+                    }
+                },
+                {
+                    "id": 1002,
+                    "module": "builtin:Commit",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {},
+                    "metadata": {
+                        "designer": {
+                            "x": 900,
+                            "y": 900
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "module": "airtable:makeApiCall",
+            "version": 3,
+            "parameters": {
+                "__IMTCONN__": "__CONEXION_AIRTABLE__"
+            },
+            "mapper": {
+                "qs": [],
+                "url": "/v0/__BASE_AIRTABLE__/__TABLA_MEMORY_STREAM__/{{2.id}}",
+                "body": "",
+                "method": "DELETE",
+                "headers": []
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 300
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "airtable2"
+                            },
+                            "label": "My Airtable OAuth connection"
+                        }
+                    }
+                }
+            },
+            "onerror": [
+                {
+                    "id": 903,
+                    "module": "gateway:WebhookRespond",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {
+                        "body": "{\"error\": \"Olvidar › borrado de un recuerdo (Airtable)\"}",
+                        "status": "500",
+                        "headers": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "metadata": {
+                        "designer": {
+                            "x": 900,
+                            "y": 600
+                        }
+                    }
+                },
+                {
+                    "id": 1003,
+                    "module": "builtin:Commit",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {},
+                    "metadata": {
+                        "designer": {
+                            "x": 1200,
+                            "y": 600
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "module": "util:TextAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 2,
+                "rowSeparator": "\n"
+            },
+            "mapper": {
+                "value": "{{2.id}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 150
+                }
+            }
+        },
+        {
+            "id": 5,
+            "module": "airtable:ActionCreateRecord",
+            "version": 3,
+            "parameters": {
+                "__IMTCONN__": "__CONEXION_AIRTABLE__"
+            },
+            "mapper": {
+                "base": "__BASE_AIRTABLE__",
+                "table": "__TABLA_MEMORY_STREAM__",
+                "record": {
+                    "__CAMPO_Chat_ID__": "GLOBAL",
+                    "__CAMPO_Autor__": "sistema",
+                    "__CAMPO_Agente__": "{{1.agente}}",
+                    "__CAMPO_Memoria__": "Olvido diario de {{1.agente}}: {{length(split(4.text; newline))}} recuerdos de poca importancia borrados (observaciones ya reflejadas, sin citar en ninguna reflexión y de hace más de 15 días).",
+                    "__CAMPO_Tipo__": "observacion",
+                    "__CAMPO_Ultimo_acceso__": "{{now}}"
+                },
+                "typecast": true,
+                "useColumnId": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 150
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "airtable2"
+                            },
+                            "label": "My Airtable OAuth connection"
+                        }
+                    }
+                }
+            },
+            "onerror": [
+                {
+                    "id": 905,
+                    "module": "gateway:WebhookRespond",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {
+                        "body": "{\"error\": \"Olvidar › registro del olvido en la memoria (Airtable)\"}",
+                        "status": "500",
+                        "headers": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "metadata": {
+                        "designer": {
+                            "x": 1500,
+                            "y": 300
+                        }
+                    }
+                },
+                {
+                    "id": 1005,
+                    "module": "builtin:Commit",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {},
+                    "metadata": {
+                        "designer": {
+                            "x": 1800,
+                            "y": 300
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 6,
+            "module": "gateway:WebhookRespond",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "body": "{\"estado\": \"olvido completado\", \"agente\": \"{{1.agente}}\", \"borrados\": {{length(split(4.text; newline))}}}",
+                "status": "200",
+                "headers": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1500,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 1006,
+                    "module": "builtin:Commit",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {},
+                    "metadata": {
+                        "designer": {
+                            "x": 1800,
+                            "y": 0
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": [
+            {
+                "moduleIds": [
+                    5
+                ],
+                "content": "<h2>Registro del olvido</h2><p>Deja en la memoria, en el chat GLOBAL y con autor «sistema», cuántos recuerdos se han borrado. Sin importancia, así que Olvidar nunca lo borra. Si no hay nada que borrar, no escribe y la ejecución acaba en la búsqueda.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    2
+                ],
+                "content": "<h2>Qué se olvida</h2><p>Las observaciones del agente ya reflejadas, con importancia informada y menor que 4, que ninguna reflexión cita como evidencia y creadas hace más de 15 días.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    1
+                ],
+                "content": "<h2>Olvidar</h2><p>Lo llama Despertador cada día después de la reflexión. Recibe: agente. Devuelve 200 con el número de recuerdos borrados, o 500 con el origen del fallo.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            }
+        ]
+    }
+}

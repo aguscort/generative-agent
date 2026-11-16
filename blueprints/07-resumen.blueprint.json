@@ -1,0 +1,1480 @@
+{
+    "name": "[Human_proxy]:[02-Memoria] (07/20) | Resumen del agente",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": "__HOOK_RESUMEN__",
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 900
+                },
+                "setupValidation": {
+                    "result": {
+                        "valid": true,
+                        "fields": []
+                    },
+                    "version": 1,
+                    "configuration": "eac0a041092b9c0d"
+                },
+                "restore": {
+                    "parameters": {
+                        "hook": {
+                            "data": {
+                                "editable": "true"
+                            },
+                            "label": "[Human_proxy] Resumen del agente"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "hook",
+                        "type": "hook:gateway-webhook",
+                        "label": "Webhook",
+                        "required": true
+                    },
+                    {
+                        "name": "maxResults",
+                        "type": "number",
+                        "label": "Maximum number of results"
+                    }
+                ],
+                "interface": [
+                    {
+                        "name": "agente",
+                        "type": "text"
+                    },
+                    {
+                        "name": "chat_id",
+                        "type": "text"
+                    },
+                    {
+                        "name": "descripcion",
+                        "type": "text"
+                    },
+                    {
+                        "name": "modo",
+                        "type": "text"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "module": "builtin:BasicRouter",
+            "version": 1,
+            "mapper": null,
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 900
+                }
+            },
+            "routes": [
+                {
+                    "flow": [
+                        {
+                            "id": 3,
+                            "module": "gateway:WebhookRespond",
+                            "version": 1,
+                            "parameters": {},
+                            "filter": {
+                                "name": "Resumen desactivado (OFF)",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{upper(ifempty(1.modo; \"OFF\"))}}",
+                                            "b": "ON",
+                                            "o": "text:notequal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "body": "{\"resumen\": \"\", \"estado\": \"OFF\"}",
+                                "status": "200",
+                                "headers": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ]
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 600,
+                                    "y": 0
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 4,
+                            "module": "datastore:GetRecord",
+                            "version": 1,
+                            "parameters": {
+                                "datastore": "__ALMACEN_CACHE__"
+                            },
+                            "filter": {
+                                "name": "Resumen activado (ON)",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{upper(ifempty(1.modo; \"OFF\"))}}",
+                                            "b": "ON",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "key": "{{1.agente}}|{{1.chat_id}}",
+                                "returnWrapped": false
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 600,
+                                    "y": 1050
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 101,
+                                    "module": "gateway:WebhookRespond",
+                                    "version": 1,
+                                    "parameters": {},
+                                    "mapper": {
+                                        "body": "{\"error\": \"Resumen: no se pudo leer la caché\"}",
+                                        "status": "500",
+                                        "headers": [
+                                            {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                            }
+                                        ]
+                                    },
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 900,
+                                            "y": 1800
+                                        }
+                                    }
+                                },
+                                {
+                                    "id": 102,
+                                    "module": "builtin:Commit",
+                                    "version": 1,
+                                    "parameters": {},
+                                    "mapper": {},
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1200,
+                                            "y": 1800
+                                        },
+                                        "restore": {}
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 5,
+                            "module": "builtin:BasicRouter",
+                            "version": 1,
+                            "mapper": null,
+                            "metadata": {
+                                "designer": {
+                                    "x": 900,
+                                    "y": 900
+                                }
+                            },
+                            "routes": [
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 6,
+                                            "module": "gateway:WebhookRespond",
+                                            "version": 1,
+                                            "parameters": {},
+                                            "filter": {
+                                                "name": "Caché vigente (< 7 días)",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{4.resumen}}",
+                                                            "o": "exist"
+                                                        },
+                                                        {
+                                                            "a": "{{4.actualizado}}",
+                                                            "b": "{{addDays(now; -7)}}",
+                                                            "o": "date:greater"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "body": "{\"resumen\": \"{{escapeJSON(4.resumen)}}\", \"estado\": \"cache\"}",
+                                                "status": "200",
+                                                "headers": [
+                                                    {
+                                                        "key": "Content-Type",
+                                                        "value": "application/json"
+                                                    }
+                                                ]
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 1200,
+                                                    "y": 300
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 10,
+                                            "module": "http:MakeRequest",
+                                            "version": 4,
+                                            "parameters": {
+                                                "tlsType": "",
+                                                "apiKeyAccount": "__CONEXION_API_KEY_MAKE__",
+                                                "authenticationType": "apiKeyConnection"
+                                            },
+                                            "filter": {
+                                                "name": "Sin caché o caducada",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{4.resumen}}",
+                                                            "o": "notexist"
+                                                        }
+                                                    ],
+                                                    [
+                                                        {
+                                                            "a": "{{4.actualizado}}",
+                                                            "b": "{{addDays(now; -7)}}",
+                                                            "o": "date:lessorequal"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "url": "https://hook.eu1.make.com/__WEBHOOK_RECUPERAR__",
+                                                "method": "post",
+                                                "timeout": "120",
+                                                "contentType": "json",
+                                                "inputMethod": "jsonString",
+                                                "shareCookies": false,
+                                                "parseResponse": true,
+                                                "allowRedirects": true,
+                                                "stopOnHttpError": true,
+                                                "jsonStringBodyContent": "{\"agente\": \"{{1.agente}}\", \"chat_id\": \"{{1.chat_id}}\", \"consultas\": [\"rasgos esenciales de la personalidad de {{1.agente}}\", \"ocupación diaria actual de {{1.agente}}\", \"cómo se siente {{1.agente}} respecto a su progreso reciente en la vida\", \"lo que {{1.agente}} sabe de su interlocutor y la relación que mantiene con él\"], \"k\": 15}",
+                                                "requestCompressedContent": true
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 1200,
+                                                    "y": 1050
+                                                },
+                                                "restore": {
+                                                    "expect": {
+                                                        "method": {
+                                                            "mode": "chose",
+                                                            "label": "POST"
+                                                        },
+                                                        "headers": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "contentType": {
+                                                            "label": "application/jsonEnter data in the JSON format, as a string or using a data structure."
+                                                        },
+                                                        "inputMethod": {
+                                                            "label": "JSON stringEnter the JSON body as a raw text string. If values contain JSON reserved characters, you must escape them manually."
+                                                        },
+                                                        "shareCookies": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "parseResponse": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "allowRedirects": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "paginationType": {
+                                                            "label": "Empty"
+                                                        },
+                                                        "queryParameters": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "stopOnHttpError": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "requestCompressedContent": {
+                                                            "mode": "chose"
+                                                        }
+                                                    },
+                                                    "parameters": {
+                                                        "tlsType": {
+                                                            "label": "Empty"
+                                                        },
+                                                        "apiKeyAccount": {
+                                                            "data": {
+                                                                "scoped": "true",
+                                                                "connection": "http-v4-apikey"
+                                                            },
+                                                            "label": "API Key connection (Any public HTTPS service)"
+                                                        },
+                                                        "authenticationType": {
+                                                            "label": "API keyUse a saved API key connection with service URL restrictions."
+                                                        }
+                                                    }
+                                                },
+                                                "parameters": [
+                                                    {
+                                                        "name": "authenticationType",
+                                                        "type": "select",
+                                                        "label": "Authentication type",
+                                                        "required": true,
+                                                        "validate": {
+                                                            "enum": [
+                                                                "noAuth",
+                                                                "apiKeyConnection",
+                                                                "basicAuthConnection",
+                                                                "oAuth",
+                                                                "apiKey",
+                                                                "basicAuth"
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "tlsType",
+                                                        "type": "select",
+                                                        "label": "Transport layer security (TLS)",
+                                                        "validate": {
+                                                            "enum": [
+                                                                "mTls",
+                                                                "tls"
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "proxyKeychain",
+                                                        "type": "keychain:proxy",
+                                                        "label": "Proxy"
+                                                    }
+                                                ],
+                                                "expect": [
+                                                    {
+                                                        "name": "url",
+                                                        "type": "url",
+                                                        "label": "URL",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "method",
+                                                        "type": "select",
+                                                        "label": "Method",
+                                                        "required": true,
+                                                        "validate": {
+                                                            "enum": [
+                                                                "get",
+                                                                "head",
+                                                                "post",
+                                                                "put",
+                                                                "patch",
+                                                                "delete",
+                                                                "options"
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "headers",
+                                                        "spec": {
+                                                            "name": "value",
+                                                            "spec": [
+                                                                {
+                                                                    "name": "name",
+                                                                    "type": "text",
+                                                                    "label": "Name",
+                                                                    "required": true,
+                                                                    "validate": {
+                                                                        "pattern": "^[-!#$%&'*+.^_`|~0-9A-Za-z]+$"
+                                                                    }
+                                                                },
+                                                                {
+                                                                    "name": "value",
+                                                                    "type": "text",
+                                                                    "label": "Value"
+                                                                }
+                                                            ],
+                                                            "type": "collection",
+                                                            "label": "Header"
+                                                        },
+                                                        "type": "array",
+                                                        "label": "Headers"
+                                                    },
+                                                    {
+                                                        "name": "queryParameters",
+                                                        "spec": {
+                                                            "name": "value",
+                                                            "spec": [
+                                                                {
+                                                                    "name": "name",
+                                                                    "type": "text",
+                                                                    "label": "Name",
+                                                                    "required": true
+                                                                },
+                                                                {
+                                                                    "name": "value",
+                                                                    "type": "text",
+                                                                    "label": "Value"
+                                                                }
+                                                            ],
+                                                            "type": "collection",
+                                                            "label": "Parameter"
+                                                        },
+                                                        "type": "array",
+                                                        "label": "Query parameters"
+                                                    },
+                                                    {
+                                                        "name": "contentType",
+                                                        "type": "select",
+                                                        "label": "Body content type",
+                                                        "validate": {
+                                                            "enum": [
+                                                                "json",
+                                                                "multipart",
+                                                                "urlEncoded",
+                                                                "custom"
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "parseResponse",
+                                                        "type": "boolean",
+                                                        "label": "Parse response",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "stopOnHttpError",
+                                                        "type": "boolean",
+                                                        "label": "Return error if HTTP request fails",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "timeout",
+                                                        "type": "uinteger",
+                                                        "label": "Timeout",
+                                                        "validate": {
+                                                            "max": 300,
+                                                            "min": 1
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "allowRedirects",
+                                                        "type": "boolean",
+                                                        "label": "Allow redirects",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "shareCookies",
+                                                        "type": "boolean",
+                                                        "label": "Share cookies with other HTTP modules",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "requestCompressedContent",
+                                                        "type": "boolean",
+                                                        "label": "Request compressed content",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "inputMethod",
+                                                        "type": "select",
+                                                        "label": "Body input method",
+                                                        "required": true,
+                                                        "validate": {
+                                                            "enum": [
+                                                                "dataStructure",
+                                                                "jsonString"
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "jsonStringBodyContent",
+                                                        "type": "text",
+                                                        "label": "Body content",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "paginationType",
+                                                        "type": "select",
+                                                        "label": "Pagination type",
+                                                        "validate": {
+                                                            "enum": [
+                                                                "offsetBased",
+                                                                "pageBased",
+                                                                "urlBased",
+                                                                "tokenBased"
+                                                            ]
+                                                        }
+                                                    }
+                                                ],
+                                                "interface": [
+                                                    {
+                                                        "name": "data",
+                                                        "type": "any",
+                                                        "label": "Data"
+                                                    },
+                                                    {
+                                                        "name": "statusCode",
+                                                        "type": "number",
+                                                        "label": "Status Code"
+                                                    },
+                                                    {
+                                                        "name": "headers",
+                                                        "spec": [
+                                                            {
+                                                                "name": "content-length",
+                                                                "type": "text",
+                                                                "label": "Content-Length"
+                                                            },
+                                                            {
+                                                                "name": "content-encoding",
+                                                                "type": "text",
+                                                                "label": "Content-Encoding"
+                                                            },
+                                                            {
+                                                                "name": "content-type",
+                                                                "type": "text",
+                                                                "label": "Content-Type"
+                                                            },
+                                                            {
+                                                                "name": "server",
+                                                                "type": "text",
+                                                                "label": "Server"
+                                                            },
+                                                            {
+                                                                "name": "cache-control",
+                                                                "type": "text",
+                                                                "label": "Cache-Control"
+                                                            },
+                                                            {
+                                                                "name": "set-cookie",
+                                                                "spec": {
+                                                                    "type": "text"
+                                                                },
+                                                                "type": "array",
+                                                                "label": "Set-Cookie"
+                                                            }
+                                                        ],
+                                                        "type": "collection",
+                                                        "label": "Headers"
+                                                    }
+                                                ]
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 103,
+                                                    "module": "gateway:WebhookRespond",
+                                                    "version": 1,
+                                                    "parameters": {},
+                                                    "mapper": {
+                                                        "body": "{\"error\": \"Resumen: no se pudo recuperar la memoria\"}",
+                                                        "status": "500",
+                                                        "headers": [
+                                                            {
+                                                                "key": "Content-Type",
+                                                                "value": "application/json"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 1500,
+                                                            "y": 1500
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "id": 104,
+                                                    "module": "builtin:Commit",
+                                                    "version": 1,
+                                                    "parameters": {},
+                                                    "mapper": {},
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 1800,
+                                                            "y": 1500
+                                                        },
+                                                        "restore": {}
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "id": 11,
+                                            "module": "gemini-ai:createACompletionGeminiPro",
+                                            "version": 1,
+                                            "parameters": {
+                                                "__IMTCONN__": "__CONEXION_GEMINI__"
+                                            },
+                                            "mapper": {
+                                                "model": "gemini-3.8-flash",
+                                                "contents": [
+                                                    {
+                                                        "role": "user",
+                                                        "parts": [
+                                                            {
+                                                                "text": "<role>\nEres el módulo de síntesis de identidad y perfil de {{1.agente}}. Tu objetivo es redactar un resumen actualizado de su personalidad, ocupación, progreso y relación con el interlocutor basándote exclusivamente en las afirmaciones de memoria recuperadas.\n</role>\n\n<instructions>\nDescribe a {{1.agente}} en cuatro apartados obligatorios, evaluando únicamente la información aportada para cada uno:\n\n1. rasgos: rasgos esenciales de su personalidad.\n2. ocupacion: su ocupación diaria actual.\n3. progreso: cómo se siente respecto a su progreso reciente en la vida.\n4. interlocutor: qué sabe de su interlocutor y qué relación mantiene con él.\n\nReglas estrictas de redacción:\n- Responde en una o dos frases por apartado.\n- Escribe en tercera persona y en texto plano estricto (sin negritas, cursivas ni sintaxis Markdown).\n- Queda prohibido inventar o deducir información que no esté respaldada explícitamente por las afirmaciones.\n- Si un apartado no contiene afirmaciones o estas son insuficientes, responde en ese apartado ÚNICAMENTE con el texto literal: sin datos\n</instructions>\n\n<context>\n<seccion_rasgos>\nAfirmaciones sobre personalidad:\n{{get(10.data.resultados; \"1.texto\")}}\n</seccion_rasgos>\n\n<seccion_ocupacion>\nAfirmaciones sobre ocupación diaria actual:\n{{get(10.data.resultados; \"2.texto\")}}\n</seccion_ocupacion>\n\n<seccion_progreso>\nAfirmaciones sobre progreso reciente:\n{{get(10.data.resultados; \"3.texto\")}}\n</seccion_progreso>\n\n<seccion_interlocutor>\nAfirmaciones sobre el interlocutor y la relación:\n{{get(10.data.resultados; \"4.texto\")}}\n</seccion_interlocutor>\n</context>\n\n<output_format>\nDevuelve la respuesta en texto plano respetando la estructura clave-valor exacta:\n\nrasgos: <una o dos frases en texto plano, o 'sin datos'>\nocupacion: <una o dos frases en texto plano, o 'sin datos'>\nprogreso: <una o dos frases en texto plano, o 'sin datos'>\ninterlocutor: <una o dos frases en texto plano, o 'sin datos'>\n</output_format>",
+                                                                "type": "text"
+                                                            }
+                                                        ]
+                                                    }
+                                                ],
+                                                "generationConfig": {
+                                                    "imageConfig": {},
+                                                    "responseSchema": "{\"type\":\"object\",\"properties\":{\"rasgos\":{\"type\":\"string\"},\"ocupacion\":{\"type\":\"string\"},\"progreso\":{\"type\":\"string\"},\"interlocutor\":{\"type\":\"string\"}},\"required\":[\"rasgos\",\"ocupacion\",\"progreso\",\"interlocutor\"]}",
+                                                    "thinkingConfig": {},
+                                                    "responseMimeType": "application/json"
+                                                },
+                                                "system_instruction": {}
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 1500,
+                                                    "y": 900
+                                                },
+                                                "setupValidation": {
+                                                    "result": {
+                                                        "valid": true,
+                                                        "fields": []
+                                                    },
+                                                    "version": 1,
+                                                    "configuration": "4fbe834ab03df478"
+                                                },
+                                                "restore": {
+                                                    "expect": {
+                                                        "model": {
+                                                            "mode": "chose",
+                                                            "label": "Gemini 3.8 Flash"
+                                                        },
+                                                        "contents": {
+                                                            "mode": "chose",
+                                                            "items": [
+                                                                {
+                                                                    "role": {
+                                                                        "mode": "chose",
+                                                                        "label": "User"
+                                                                    },
+                                                                    "parts": {
+                                                                        "mode": "chose",
+                                                                        "items": [
+                                                                            {
+                                                                                "type": {
+                                                                                    "mode": "chose",
+                                                                                    "label": "Text"
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            ]
+                                                        },
+                                                        "serviceTier": {
+                                                            "mode": "chose",
+                                                            "label": "Empty"
+                                                        },
+                                                        "url_context": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "code_execution": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "safetySettings": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "generationConfig": {
+                                                            "nested": {
+                                                                "imageConfig": {
+                                                                    "nested": {
+                                                                        "imageSize": {
+                                                                            "mode": "chose",
+                                                                            "label": "Empty"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "stopSequences": {
+                                                                    "mode": "chose"
+                                                                },
+                                                                "thinkingConfig": {
+                                                                    "nested": {
+                                                                        "thinking_level": {
+                                                                            "mode": "chose",
+                                                                            "label": "Empty"
+                                                                        },
+                                                                        "include_thoughts": {
+                                                                            "mode": "chose"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "mediaResolution": {
+                                                                    "mode": "chose",
+                                                                    "label": "Empty"
+                                                                },
+                                                                "responseMimeType": {
+                                                                    "mode": "chose",
+                                                                    "label": "JSON Output"
+                                                                },
+                                                                "new_responseSchema": {
+                                                                    "mode": "chose"
+                                                                },
+                                                                "responseModalities": {
+                                                                    "mode": "chose"
+                                                                }
+                                                            }
+                                                        },
+                                                        "system_instruction": {
+                                                            "nested": {
+                                                                "parts": {
+                                                                    "mode": "chose"
+                                                                }
+                                                            }
+                                                        },
+                                                        "google_maps_context": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "google_search_context": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "file_search_store_context": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "function_declarations_context": {
+                                                            "mode": "chose"
+                                                        }
+                                                    },
+                                                    "parameters": {
+                                                        "__IMTCONN__": {
+                                                            "data": {
+                                                                "scoped": "true",
+                                                                "connection": "gemini-ai-q9zyjp"
+                                                            },
+                                                            "label": "Gemini AI connection"
+                                                        }
+                                                    }
+                                                },
+                                                "parameters": [
+                                                    {
+                                                        "name": "__IMTCONN__",
+                                                        "type": "account:gemini-ai-q9zyjp",
+                                                        "label": "Connection",
+                                                        "required": true
+                                                    }
+                                                ],
+                                                "expect": [
+                                                    {
+                                                        "name": "model",
+                                                        "type": "select",
+                                                        "label": "AI Model",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "contents",
+                                                        "spec": [
+                                                            {
+                                                                "name": "role",
+                                                                "type": "select",
+                                                                "label": "Role",
+                                                                "options": [
+                                                                    {
+                                                                        "label": "User",
+                                                                        "value": "user"
+                                                                    },
+                                                                    {
+                                                                        "label": "Model",
+                                                                        "value": "model"
+                                                                    }
+                                                                ],
+                                                                "required": true
+                                                            },
+                                                            {
+                                                                "name": "parts",
+                                                                "spec": [
+                                                                    {
+                                                                        "name": "type",
+                                                                        "type": "select",
+                                                                        "label": "Message Type",
+                                                                        "options": [
+                                                                            {
+                                                                                "label": "Text",
+                                                                                "value": "text",
+                                                                                "nested": [
+                                                                                    {
+                                                                                        "name": "text",
+                                                                                        "type": "text",
+                                                                                        "label": "Text",
+                                                                                        "required": true
+                                                                                    }
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "label": "File",
+                                                                                "value": "file",
+                                                                                "nested": [
+                                                                                    {
+                                                                                        "name": "file_data",
+                                                                                        "spec": [
+                                                                                            {
+                                                                                                "name": "mime_type",
+                                                                                                "type": "text",
+                                                                                                "label": "Mime Type",
+                                                                                                "required": true
+                                                                                            },
+                                                                                            {
+                                                                                                "help": "You can use public or signed URLs as input by using the URLs.",
+                                                                                                "name": "file_uri",
+                                                                                                "type": "text",
+                                                                                                "label": "File URI",
+                                                                                                "required": true
+                                                                                            }
+                                                                                        ],
+                                                                                        "type": "collection",
+                                                                                        "label": "File Data",
+                                                                                        "required": true
+                                                                                    }
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "label": "Function Call",
+                                                                                "value": "functionCall",
+                                                                                "nested": [
+                                                                                    {
+                                                                                        "name": "functionCall",
+                                                                                        "spec": [
+                                                                                            {
+                                                                                                "help": "The name of the function to call.",
+                                                                                                "name": "name",
+                                                                                                "type": "text",
+                                                                                                "label": "Name",
+                                                                                                "required": true,
+                                                                                                "validate": {
+                                                                                                    "max": 64
+                                                                                                }
+                                                                                            },
+                                                                                            {
+                                                                                                "help": "The function parameters and values in JSON object format.",
+                                                                                                "name": "args",
+                                                                                                "type": "json",
+                                                                                                "label": "Arguments"
+                                                                                            },
+                                                                                            {
+                                                                                                "help": "The unique ID of the function call.",
+                                                                                                "name": "id",
+                                                                                                "type": "text",
+                                                                                                "label": "Function Call ID"
+                                                                                            }
+                                                                                        ],
+                                                                                        "type": "collection",
+                                                                                        "label": "Function Call"
+                                                                                    }
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "label": "Function Response",
+                                                                                "value": "functionResponse",
+                                                                                "nested": [
+                                                                                    {
+                                                                                        "name": "functionResponse",
+                                                                                        "spec": [
+                                                                                            {
+                                                                                                "help": "The name of the function to call.",
+                                                                                                "name": "name",
+                                                                                                "type": "text",
+                                                                                                "label": "Name",
+                                                                                                "required": true,
+                                                                                                "validate": {
+                                                                                                    "max": 64
+                                                                                                }
+                                                                                            },
+                                                                                            {
+                                                                                                "help": "The function response in JSON object format.",
+                                                                                                "name": "response",
+                                                                                                "type": "json",
+                                                                                                "label": "Response",
+                                                                                                "required": true
+                                                                                            }
+                                                                                        ],
+                                                                                        "type": "collection",
+                                                                                        "label": "Function Response"
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        ],
+                                                                        "required": true
+                                                                    },
+                                                                    {
+                                                                        "name": "thoughtSignature",
+                                                                        "type": "text",
+                                                                        "label": "Thought Signature"
+                                                                    }
+                                                                ],
+                                                                "type": "array",
+                                                                "label": "Parts",
+                                                                "required": true
+                                                            }
+                                                        ],
+                                                        "type": "array",
+                                                        "label": "Messages",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "system_instruction",
+                                                        "spec": [
+                                                            {
+                                                                "name": "parts",
+                                                                "spec": {
+                                                                    "name": "value",
+                                                                    "spec": [
+                                                                        {
+                                                                            "name": "text",
+                                                                            "type": "text",
+                                                                            "label": "Value"
+                                                                        }
+                                                                    ],
+                                                                    "type": "collection",
+                                                                    "label": "Prompt"
+                                                                },
+                                                                "type": "array",
+                                                                "label": "Prompts"
+                                                            }
+                                                        ],
+                                                        "type": "collection",
+                                                        "label": "System Instructions"
+                                                    },
+                                                    {
+                                                        "name": "safetySettings",
+                                                        "spec": [
+                                                            {
+                                                                "name": "category",
+                                                                "type": "select",
+                                                                "label": "Category",
+                                                                "options": [
+                                                                    {
+                                                                        "label": "Harassment content",
+                                                                        "value": "HARM_CATEGORY_HARASSMENT"
+                                                                    },
+                                                                    {
+                                                                        "label": "Hate speech and content",
+                                                                        "value": "HARM_CATEGORY_HATE_SPEECH"
+                                                                    },
+                                                                    {
+                                                                        "label": "Sexually explicit content.",
+                                                                        "value": "HARM_CATEGORY_SEXUALLY_EXPLICIT"
+                                                                    },
+                                                                    {
+                                                                        "label": "Dangerous content:",
+                                                                        "value": "HARM_CATEGORY_DANGEROUS_CONTENT"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "name": "threshold",
+                                                                "type": "select",
+                                                                "label": "Threshold",
+                                                                "options": [
+                                                                    {
+                                                                        "label": "Block low and above.",
+                                                                        "value": "BLOCK_LOW_AND_ABOVE"
+                                                                    },
+                                                                    {
+                                                                        "label": "Block medium and above.",
+                                                                        "value": "BLOCK_MEDIUM_AND_ABOVE"
+                                                                    },
+                                                                    {
+                                                                        "label": "Block only high.",
+                                                                        "value": "BLOCK_ONLY_HIGH"
+                                                                    },
+                                                                    {
+                                                                        "label": "Block none.",
+                                                                        "value": "BLOCK_NONE"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ],
+                                                        "type": "array",
+                                                        "label": "Safety Settings"
+                                                    },
+                                                    {
+                                                        "name": "generationConfig",
+                                                        "spec": [
+                                                            {
+                                                                "name": "stopSequences",
+                                                                "spec": {
+                                                                    "name": "value",
+                                                                    "type": "text",
+                                                                    "label": "Stop Sequence"
+                                                                },
+                                                                "type": "array",
+                                                                "label": "Stop Sequences"
+                                                            },
+                                                            {
+                                                                "name": "responseModalities",
+                                                                "type": "select",
+                                                                "label": "Response Modalities",
+                                                                "multiple": true,
+                                                                "validate": {
+                                                                    "enum": [
+                                                                        "text",
+                                                                        "image"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "name": "maxOutputTokens",
+                                                                "type": "number",
+                                                                "label": "Max Output Tokens"
+                                                            },
+                                                            {
+                                                                "name": "temperature",
+                                                                "type": "number",
+                                                                "label": "Temperature",
+                                                                "validate": {
+                                                                    "max": 1,
+                                                                    "min": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "name": "topP",
+                                                                "type": "number",
+                                                                "label": "Top P",
+                                                                "validate": {
+                                                                    "max": 1,
+                                                                    "min": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "name": "topK",
+                                                                "type": "number",
+                                                                "label": "Top K"
+                                                            },
+                                                            {
+                                                                "name": "thinkingConfig",
+                                                                "spec": [
+                                                                    {
+                                                                        "name": "thinkingBudget",
+                                                                        "type": "number",
+                                                                        "label": "Thinking Budget"
+                                                                    },
+                                                                    {
+                                                                        "name": "include_thoughts",
+                                                                        "type": "boolean",
+                                                                        "label": "Include Thoughts"
+                                                                    },
+                                                                    {
+                                                                        "name": "thinking_level",
+                                                                        "type": "select",
+                                                                        "label": "Thinking Level",
+                                                                        "validate": {
+                                                                            "enum": [
+                                                                                "low",
+                                                                                "high"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                ],
+                                                                "type": "collection",
+                                                                "label": "Thinking Config"
+                                                            },
+                                                            {
+                                                                "name": "mediaResolution",
+                                                                "type": "select",
+                                                                "label": "Media Resolution",
+                                                                "validate": {
+                                                                    "enum": [
+                                                                        "media_resolution_low",
+                                                                        "media_resolution_medium",
+                                                                        "media_resolution_high"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "name": "imageConfig",
+                                                                "spec": [
+                                                                    {
+                                                                        "name": "imageSize",
+                                                                        "type": "select",
+                                                                        "label": "Image Size",
+                                                                        "validate": {
+                                                                            "enum": [
+                                                                                "1K",
+                                                                                "2K",
+                                                                                "4K"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                ],
+                                                                "type": "collection",
+                                                                "label": "Image Configuration"
+                                                            },
+                                                            {
+                                                                "name": "responseMimeType",
+                                                                "type": "select",
+                                                                "label": "Response Format"
+                                                            },
+                                                            {
+                                                                "name": "responseSchema",
+                                                                "type": "any",
+                                                                "label": "Response Schema (Deprecated)"
+                                                            },
+                                                            {
+                                                                "name": "new_responseSchema",
+                                                                "spec": [
+                                                                    {
+                                                                        "name": "type",
+                                                                        "type": "select",
+                                                                        "label": "Value Type",
+                                                                        "options": [
+                                                                            {
+                                                                                "label": "String",
+                                                                                "value": "string",
+                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=string"
+                                                                            },
+                                                                            {
+                                                                                "label": "Enum",
+                                                                                "value": "enum",
+                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=enum"
+                                                                            },
+                                                                            {
+                                                                                "label": "Number",
+                                                                                "value": "number",
+                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=number"
+                                                                            },
+                                                                            {
+                                                                                "label": "Integer",
+                                                                                "value": "integer",
+                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=integer"
+                                                                            },
+                                                                            {
+                                                                                "label": "Boolean",
+                                                                                "value": "boolean",
+                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=boolean"
+                                                                            },
+                                                                            {
+                                                                                "label": "Object",
+                                                                                "value": "object",
+                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=object"
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                ],
+                                                                "type": "array",
+                                                                "label": "Response Schema"
+                                                            }
+                                                        ],
+                                                        "type": "collection",
+                                                        "label": "Generation configurations"
+                                                    },
+                                                    {
+                                                        "name": "tools",
+                                                        "type": "any",
+                                                        "label": "Tools"
+                                                    },
+                                                    {
+                                                        "name": "tool_config",
+                                                        "type": "any",
+                                                        "label": "Tool Config"
+                                                    },
+                                                    {
+                                                        "name": "function_declarations_context",
+                                                        "type": "boolean",
+                                                        "label": "Function Declarations Grounding"
+                                                    },
+                                                    {
+                                                        "name": "url_context",
+                                                        "type": "boolean",
+                                                        "label": "URL Context"
+                                                    },
+                                                    {
+                                                        "name": "google_search_context",
+                                                        "type": "boolean",
+                                                        "label": "Google Search Grounding"
+                                                    },
+                                                    {
+                                                        "name": "code_execution",
+                                                        "type": "boolean",
+                                                        "label": "Code Execution"
+                                                    },
+                                                    {
+                                                        "name": "google_maps_context",
+                                                        "type": "boolean",
+                                                        "label": "Google Maps Grounding"
+                                                    },
+                                                    {
+                                                        "name": "file_search_store_context",
+                                                        "type": "boolean",
+                                                        "label": "File Search Store Context"
+                                                    },
+                                                    {
+                                                        "name": "serviceTier",
+                                                        "type": "select",
+                                                        "label": "Inference Service Tier"
+                                                    }
+                                                ]
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 105,
+                                                    "module": "gateway:WebhookRespond",
+                                                    "version": 1,
+                                                    "parameters": {},
+                                                    "mapper": {
+                                                        "body": "{\"error\": \"Resumen: no se pudo redactar el resumen\"}",
+                                                        "status": "500",
+                                                        "headers": [
+                                                            {
+                                                                "key": "Content-Type",
+                                                                "value": "application/json"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 1800,
+                                                            "y": 1200
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "id": 106,
+                                                    "module": "builtin:Commit",
+                                                    "version": 1,
+                                                    "parameters": {},
+                                                    "mapper": {},
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 2100,
+                                                            "y": 1200
+                                                        },
+                                                        "restore": {}
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "id": 16,
+                                            "module": "util:SetVariables",
+                                            "version": 1,
+                                            "parameters": {},
+                                            "mapper": {
+                                                "scope": "roundtrip",
+                                                "variables": [
+                                                    {
+                                                        "name": "resumen",
+                                                        "value": "Resumen de {{1.agente}} según su memoria de esta conversación (actualizado a las {{formatDate(now; \"HH:mm [del] DD/MM/YYYY\"; \"Europe/Madrid\")}}):\nRasgos esenciales: {{trim(11.result.rasgos)}}\nOcupación diaria actual: {{trim(11.result.ocupacion)}}\nCómo se siente respecto a su progreso reciente: {{trim(11.result.progreso)}}\nLo que sabe de su interlocutor y su relación con él: {{trim(11.result.interlocutor)}}"
+                                                    }
+                                                ]
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 1800,
+                                                    "y": 750
+                                                }
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 115,
+                                                    "module": "gateway:WebhookRespond",
+                                                    "version": 1,
+                                                    "parameters": {},
+                                                    "mapper": {
+                                                        "body": "{\"error\": \"Resumen: no se pudo componer el resumen\"}",
+                                                        "status": "500",
+                                                        "headers": [
+                                                            {
+                                                                "key": "Content-Type",
+                                                                "value": "application/json"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 2100,
+                                                            "y": 900
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "id": 116,
+                                                    "module": "builtin:Commit",
+                                                    "version": 1,
+                                                    "parameters": {},
+                                                    "mapper": {},
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 2400,
+                                                            "y": 900
+                                                        },
+                                                        "restore": {}
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "id": 19,
+                                            "module": "gateway:WebhookRespond",
+                                            "version": 1,
+                                            "parameters": {},
+                                            "mapper": {
+                                                "body": "{\"resumen\": \"{{escapeJSON(16.resumen)}}\", \"estado\": \"regenerado\"}",
+                                                "status": "200",
+                                                "headers": [
+                                                    {
+                                                        "key": "Content-Type",
+                                                        "value": "application/json"
+                                                    }
+                                                ]
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2100,
+                                                    "y": 600
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "id": 18,
+                                            "module": "datastore:AddRecord",
+                                            "version": 1,
+                                            "parameters": {
+                                                "datastore": "__ALMACEN_CACHE__"
+                                            },
+                                            "filter": {
+                                                "name": "Hay algún dato que cachear",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{lower(11.result.rasgos)}}",
+                                                            "b": "sin datos",
+                                                            "o": "text:notcontain"
+                                                        }
+                                                    ],
+                                                    [
+                                                        {
+                                                            "a": "{{lower(11.result.ocupacion)}}",
+                                                            "b": "sin datos",
+                                                            "o": "text:notcontain"
+                                                        }
+                                                    ],
+                                                    [
+                                                        {
+                                                            "a": "{{lower(11.result.progreso)}}",
+                                                            "b": "sin datos",
+                                                            "o": "text:notcontain"
+                                                        }
+                                                    ],
+                                                    [
+                                                        {
+                                                            "a": "{{lower(11.result.interlocutor)}}",
+                                                            "b": "sin datos",
+                                                            "o": "text:notcontain"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "key": "{{1.agente}}|{{1.chat_id}}",
+                                                "data": {
+                                                    "agente": "{{1.agente}}",
+                                                    "chat_id": "{{1.chat_id}}",
+                                                    "resumen": "{{16.resumen}}",
+                                                    "actualizado": "{{now}}"
+                                                },
+                                                "overwrite": true
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2400,
+                                                    "y": 600
+                                                }
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 121,
+                                                    "module": "builtin:Commit",
+                                                    "version": 1,
+                                                    "parameters": {},
+                                                    "mapper": {},
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 2700,
+                                                            "y": 600
+                                                        },
+                                                        "restore": {}
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": [
+            {
+                "moduleIds": [
+                    1
+                ],
+                "content": "<p><strong>Webhook de (7) Resumen del agente</strong></p><p>Origen: (6) Responder (módulo 9).</p><p>Destino: este escenario.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    10
+                ],
+                "content": "<p><strong>Llamada a webhook</strong></p><p>Origen: (7) Resumen del agente, módulo 10.</p><p>Destino: (4) Recuperar.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            }
+        ]
+    }
+}

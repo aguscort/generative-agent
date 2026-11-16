@@ -1,0 +1,947 @@
+{
+    "name": "[Human_proxy]:[03-Planning] (09/20) | Clasificar",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": "__HOOK_CLASIFICAR__",
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 300
+                },
+                "setupValidation": {
+                    "result": {
+                        "valid": true,
+                        "fields": []
+                    },
+                    "version": 1,
+                    "configuration": "746a770b4d1337e0"
+                },
+                "restore": {
+                    "parameters": {
+                        "hook": {
+                            "data": {
+                                "editable": "true"
+                            },
+                            "label": "[Human_proxy] Clasificar"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "hook",
+                        "type": "hook:gateway-webhook",
+                        "label": "Webhook",
+                        "required": true
+                    },
+                    {
+                        "name": "maxResults",
+                        "type": "number",
+                        "label": "Maximum number of results"
+                    }
+                ],
+                "interface": [
+                    {
+                        "name": "agente",
+                        "type": "text"
+                    },
+                    {
+                        "name": "chat_id",
+                        "type": "text"
+                    },
+                    {
+                        "name": "usuario",
+                        "type": "text"
+                    },
+                    {
+                        "name": "mensaje",
+                        "type": "text"
+                    },
+                    {
+                        "name": "descripcion",
+                        "type": "text"
+                    },
+                    {
+                        "name": "resumen",
+                        "type": "text"
+                    },
+                    {
+                        "name": "recuerdos",
+                        "type": "text"
+                    },
+                    {
+                        "name": "mensajes",
+                        "type": "text"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 54,
+            "module": "datastore:SearchRecord",
+            "version": 1,
+            "parameters": {
+                "limit": 20,
+                "datastore": "__ALMACEN_COMPROMISOS__",
+                "continueWhenNoRes": true
+            },
+            "mapper": {
+                "sort": [
+                    {
+                        "key": "momento",
+                        "order": 1
+                    }
+                ],
+                "filter": [
+                    [
+                        {
+                            "a": "agente",
+                            "b": "{{1.agente}}",
+                            "o": "text:equal"
+                        },
+                        {
+                            "a": "destinatario",
+                            "b": "{{1.chat_id}}",
+                            "o": "text:equal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "cumplido",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "fallido",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "liberado",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "caducado",
+                            "o": "text:notequal"
+                        }
+                    ],
+                    [
+                        {
+                            "a": "agente",
+                            "b": "{{1.agente}}",
+                            "o": "text:equal"
+                        },
+                        {
+                            "a": "comprometido_con",
+                            "b": "{{1.chat_id}}",
+                            "o": "text:equal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "cumplido",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "fallido",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "liberado",
+                            "o": "text:notequal"
+                        },
+                        {
+                            "a": "estado",
+                            "b": "caducado",
+                            "o": "text:notequal"
+                        }
+                    ]
+                ],
+                "mappAbleLimit": ""
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 300
+                }
+            },
+            "onerror": [
+                {
+                    "id": 954,
+                    "module": "gateway:WebhookRespond",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {
+                        "body": "{\"error\": \"Clasificar › lectura de los compromisos (almacén Compromisos)\"}",
+                        "status": "500",
+                        "headers": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "metadata": {
+                        "designer": {
+                            "x": 600,
+                            "y": 600
+                        }
+                    }
+                },
+                {
+                    "id": 955,
+                    "module": "builtin:Commit",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {},
+                    "metadata": {
+                        "designer": {
+                            "x": 900,
+                            "y": 600
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 55,
+            "module": "util:TextAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 54,
+                "rowSeparator": "\n"
+            },
+            "mapper": {
+                "value": "{{54.key}} · {{54.data.linea}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 150
+                }
+            }
+        },
+        {
+            "id": 50,
+            "module": "gemini-ai:createACompletionGeminiPro",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": "__CONEXION_GEMINI__"
+            },
+            "mapper": {
+                "model": "gemini-3.8-flash",
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [
+                            {
+                                "text": "<task_instructions>\nLee el mensaje que el interlocutor acaba de enviar a {{1.agente}} y decide qué curso de acción debe seguir {{1.agente}} y qué acto de habla es, según el modelo de compromisos de Shoham.\n\nPrimero examina el mensaje: qué dice el interlocutor, qué quiere o necesita, a qué se refiere en la conversación reciente y qué datos concretos aporta. Después propón el curso de acción de {{1.agente}} y clasifícalo en uno de los actos siguientes.\n</task_instructions>\n\n<agent_capabilities>\n{{1.agente}} solo puede comprometerse a estas acciones:\n- informar: escribir más adelante al interlocutor por iniciativa propia, por ejemplo para avisarle de algo o darle un dato, con cotizaciones si hacen falta;\n- preguntar: hacerle más adelante una pregunta;\n- investigar: buscar información sobre un tema;\n- cotizar: consultar precios de valores para sí mismo, sin escribir a nadie;\n- estudiar: analizar un evento o un dato económico cuando se publique;\n- abstenerse: no hacer algo que el interlocutor no quiere (informar o preguntar).\n</agent_capabilities>\n\n<speech_acts_definitions>\nActos posibles:\n- REQUEST: el curso de acción es comprometerse a una de esas acciones más adelante, a una hora, en una fecha o cuando se cumpla una condición, porque el interlocutor se lo pide o acepta algo que {{1.agente}} le ofreció en su último mensaje. Si el interlocutor le pide que no le escriba o no le pregunte por algo, el compromiso es abstenerse.\n- UNREQUEST: el curso de acción es dejar de ocuparse de algo, porque el interlocutor le libera de lo que le había pedido («ya no hace falta que me avises», «olvida lo de Inditex») o retira una prohibición anterior; en ese caso la acción es abstenerse.\n- INFORM: el curso de acción es contestar ahora y nada más, porque el interlocutor le comunica un hecho, le saluda, le comenta algo, le hace una pregunta que puede contestar en este mismo momento o le pide algo que no está entre las acciones a las que puede comprometerse, y entonces {{1.agente}} le dice que no puede.\n- NINGUNO: el curso de acción es no hacer nada, ni siquiera contestar.\n</speech_acts_definitions>\n\n<field_definitions>\nCampos:\n- examen: el examen del mensaje, en dos o tres frases: qué dice, qué quiere o necesita el interlocutor y qué datos aporta.\n- curso_accion: lo que {{1.agente}} debe hacer ante este mensaje, descrito con libertad y con los datos concretos que haya: qué haría, cuándo y por qué.\n- acto: el acto que corresponde a ese curso de acción.\n- accion: una de las acciones anteriores; en UNREQUEST, vacía si le libera de todo.\n- dia (AAAA-MM-DD) y hora (HH:mm), en hora de Madrid; vacíos si es para ahora o no se dice.\n- fin (AAAA-MM-DD): hasta cuándo vale el encargo si el interlocutor lo dice; si no, vacío.\n- condicion: la condición de la que depende, escrita de forma que se pueda comprobar con datos (por ejemplo «Inditex por debajo de 50 euros»); si no hay, vacía.\n- simbolos: símbolos de Yahoo Finance de los valores implicados, separados por comas (por ejemplo ITX.MC, SAN.MC, ^IBEX); si no hay, vacío.\n- contenido: qué hará {{1.agente}}, en una frase y con los datos concretos que haya en la conversación; en abstenerse, solo la acción de la que se abstiene (informar o preguntar); en UNREQUEST, de qué le libera.\n- libera: en UNREQUEST, las claves de los compromisos de la lista de los que le libera, separadas por comas; si le libera de todo, todas las claves; si no reconoces ninguno, vacía. En una abstención, las claves de los compromisos de la lista que dejan de tener sentido por ella. En los demás casos, vacía.\n- repite: en REQUEST, la clave del compromiso de la lista que ya pide lo mismo; si no hay ninguno, vacía.\n- vetado_por: en REQUEST, la clave de la abstención de la lista que prohíbe lo que ahora pide; si no hay ninguna, vacía.\n\nReglas adicionales de campos:\n- En una abstención sobre valores concretos, pon sus símbolos; sobre un tema sin valores, escribe el tema en condicion; si es sobre todo, deja ambos vacíos.\n- Usa solo claves que aparezcan en la lista.\n- informe: lo que {{1.agente}} ha decidido hacer, en tercera persona y en una o dos frases, como registro de lo decidido: qué hace, cuándo, con qué condición y por qué. En INFORM, REQUEST y UNREQUEST, escríbelo siempre. En NINGUNO, déjalo vacío.\n- respuesta: el mensaje que {{1.agente}} envía ahora al interlocutor, conforme a curso_accion. En INFORM, REQUEST y UNREQUEST, escríbelo siempre: en REQUEST, a qué se compromete, cuándo y con qué condición, o por qué no lo hace si choca con algo que el interlocutor le prohibió o ya lo tenía apuntado; en UNREQUEST, de qué deja de ocuparse. En NINGUNO, déjalo vacío.\n- Para escribir respuesta, eres {{1.agente}} hablando por Telegram: mantente en tu personaje, responde en el idioma del interlocutor, en una o dos frases y sin pasar de 20 palabras, y no inventes recuerdos, precios ni cotizaciones que no aparezcan en la información que tienes.\n\nReglas de exclusión de llenado:\n- examen, curso_accion y acto se rellenan siempre.\n- En INFORM, rellena además informe y respuesta, y deja vacíos los demás.\n- En NINGUNO, deja vacíos todos los demás.\n</field_definitions>\n\n<context>\nAhora es {{switch(formatDate(now; \"d\"; \"Europe/Madrid\"); 0; \"domingo\"; 1; \"lunes\"; 2; \"martes\"; 3; \"miércoles\"; 4; \"jueves\"; 5; \"viernes\"; 6; \"sábado\")}}, {{formatDate(now; \"YYYY-MM-DD [a las] HH:mm\"; \"Europe/Madrid\")}}, hora de Madrid.\n\nQuién es {{1.agente}}:\n{{1.descripcion}}\n\nLo que {{1.agente}} ha llegado a saber de sí mismo y de su interlocutor (si está vacío, ignóralo):\n{{1.resumen}}\n\nLo que {{1.agente}} recuerda relacionado con este mensaje (si está vacío, no recuerda nada):\n{{1.recuerdos}}\n\nConversación reciente, de lo más antiguo a lo más nuevo:\n{{1.mensajes}}\n\nCompromisos vigentes de {{1.agente}} con este interlocutor, con su clave:\n{{ifempty(trim(55.text); \"ninguno\")}}\n\nMensaje que debes clasificar: «{{1.mensaje}}»\n</context>\n\n<output_format>\nRellena EXACTAMENTE este esquema de salida. Cuando un campo deba quedar vacío, no escribas la palabra \"vacío\", déjalo totalmente en blanco a continuación de los dos puntos:\n\nexamen: \ncurso_accion: \nacto: \naccion: \ndia: \nhora: \nfin: \ncondicion: \nsimbolos: \ncontenido: \nlibera: \nrepite: \nvetado_por: \ninforme: \nrespuesta: \n</output_format>",
+                                "type": "text"
+                            }
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "imageConfig": {},
+                    "responseSchema": "{\"type\":\"object\",\"properties\":{\"examen\":{\"type\":\"string\"},\"curso_accion\":{\"type\":\"string\"},\"acto\":{\"type\":\"string\",\"enum\":[\"REQUEST\",\"UNREQUEST\",\"INFORM\",\"NINGUNO\"]},\"accion\":{\"type\":\"string\"},\"dia\":{\"type\":\"string\"},\"hora\":{\"type\":\"string\"},\"fin\":{\"type\":\"string\"},\"condicion\":{\"type\":\"string\"},\"simbolos\":{\"type\":\"string\"},\"contenido\":{\"type\":\"string\"},\"libera\":{\"type\":\"string\"},\"repite\":{\"type\":\"string\"},\"vetado_por\":{\"type\":\"string\"},\"informe\":{\"type\":\"string\"},\"respuesta\":{\"type\":\"string\"}},\"required\":[\"examen\",\"curso_accion\",\"acto\",\"accion\",\"dia\",\"hora\",\"fin\",\"condicion\",\"simbolos\",\"contenido\",\"libera\",\"repite\",\"vetado_por\",\"informe\",\"respuesta\"],\"propertyOrdering\":[\"examen\",\"curso_accion\",\"acto\",\"accion\",\"dia\",\"hora\",\"fin\",\"condicion\",\"simbolos\",\"contenido\",\"libera\",\"repite\",\"vetado_por\",\"informe\",\"respuesta\"]}",
+                    "thinkingConfig": {},
+                    "responseMimeType": "application/json"
+                },
+                "system_instruction": {
+                    "parts": [
+                        {
+                            "text": "Clasificas mensajes para un agente que funciona con el modelo de compromisos de Shoham. Respondes solo con el JSON pedido y no inventas datos que la conversación no da."
+                        }
+                    ]
+                }
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 150
+                },
+                "setupValidation": {
+                    "result": {
+                        "valid": true,
+                        "fields": []
+                    },
+                    "version": 1,
+                    "configuration": "a38b4b13754e9f4f"
+                },
+                "restore": {
+                    "expect": {
+                        "model": {
+                            "mode": "chose",
+                            "label": "Gemini 3.8 Flash"
+                        },
+                        "contents": {
+                            "mode": "chose",
+                            "items": [
+                                {
+                                    "role": {
+                                        "mode": "chose",
+                                        "label": "User"
+                                    },
+                                    "parts": {
+                                        "mode": "chose",
+                                        "items": [
+                                            {
+                                                "type": {
+                                                    "mode": "chose",
+                                                    "label": "Text"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        "serviceTier": {
+                            "mode": "chose",
+                            "label": "Empty"
+                        },
+                        "url_context": {
+                            "mode": "chose"
+                        },
+                        "code_execution": {
+                            "mode": "chose"
+                        },
+                        "safetySettings": {
+                            "mode": "chose"
+                        },
+                        "generationConfig": {
+                            "nested": {
+                                "imageConfig": {
+                                    "nested": {
+                                        "imageSize": {
+                                            "mode": "chose",
+                                            "label": "Empty"
+                                        }
+                                    }
+                                },
+                                "stopSequences": {
+                                    "mode": "chose"
+                                },
+                                "thinkingConfig": {
+                                    "nested": {
+                                        "thinking_level": {
+                                            "mode": "chose",
+                                            "label": "Empty"
+                                        },
+                                        "include_thoughts": {
+                                            "mode": "chose"
+                                        }
+                                    }
+                                },
+                                "mediaResolution": {
+                                    "mode": "chose",
+                                    "label": "Empty"
+                                },
+                                "responseMimeType": {
+                                    "mode": "chose",
+                                    "label": "JSON Output"
+                                },
+                                "new_responseSchema": {
+                                    "mode": "chose"
+                                },
+                                "responseModalities": {
+                                    "mode": "chose"
+                                }
+                            }
+                        },
+                        "system_instruction": {
+                            "nested": {
+                                "parts": {
+                                    "mode": "chose",
+                                    "items": [
+                                        null
+                                    ]
+                                }
+                            }
+                        },
+                        "google_maps_context": {
+                            "mode": "chose"
+                        },
+                        "google_search_context": {
+                            "mode": "chose"
+                        },
+                        "file_search_store_context": {
+                            "mode": "chose"
+                        },
+                        "function_declarations_context": {
+                            "mode": "chose"
+                        }
+                    },
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "gemini-ai-q9zyjp"
+                            },
+                            "label": "Gemini AI connection"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "__IMTCONN__",
+                        "type": "account:gemini-ai-q9zyjp",
+                        "label": "Connection",
+                        "required": true
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "model",
+                        "type": "select",
+                        "label": "AI Model",
+                        "required": true
+                    },
+                    {
+                        "name": "contents",
+                        "spec": [
+                            {
+                                "name": "role",
+                                "type": "select",
+                                "label": "Role",
+                                "options": [
+                                    {
+                                        "label": "User",
+                                        "value": "user"
+                                    },
+                                    {
+                                        "label": "Model",
+                                        "value": "model"
+                                    }
+                                ],
+                                "required": true
+                            },
+                            {
+                                "name": "parts",
+                                "spec": [
+                                    {
+                                        "name": "type",
+                                        "type": "select",
+                                        "label": "Message Type",
+                                        "options": [
+                                            {
+                                                "label": "Text",
+                                                "value": "text",
+                                                "nested": [
+                                                    {
+                                                        "name": "text",
+                                                        "type": "text",
+                                                        "label": "Text",
+                                                        "required": true
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "label": "File",
+                                                "value": "file",
+                                                "nested": [
+                                                    {
+                                                        "name": "file_data",
+                                                        "spec": [
+                                                            {
+                                                                "name": "mime_type",
+                                                                "type": "text",
+                                                                "label": "Mime Type",
+                                                                "required": true
+                                                            },
+                                                            {
+                                                                "help": "You can use public or signed URLs as input by using the URLs.",
+                                                                "name": "file_uri",
+                                                                "type": "text",
+                                                                "label": "File URI",
+                                                                "required": true
+                                                            }
+                                                        ],
+                                                        "type": "collection",
+                                                        "label": "File Data",
+                                                        "required": true
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "label": "Function Call",
+                                                "value": "functionCall",
+                                                "nested": [
+                                                    {
+                                                        "name": "functionCall",
+                                                        "spec": [
+                                                            {
+                                                                "help": "The name of the function to call.",
+                                                                "name": "name",
+                                                                "type": "text",
+                                                                "label": "Name",
+                                                                "required": true,
+                                                                "validate": {
+                                                                    "max": 64
+                                                                }
+                                                            },
+                                                            {
+                                                                "help": "The function parameters and values in JSON object format.",
+                                                                "name": "args",
+                                                                "type": "json",
+                                                                "label": "Arguments"
+                                                            },
+                                                            {
+                                                                "help": "The unique ID of the function call.",
+                                                                "name": "id",
+                                                                "type": "text",
+                                                                "label": "Function Call ID"
+                                                            }
+                                                        ],
+                                                        "type": "collection",
+                                                        "label": "Function Call"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "label": "Function Response",
+                                                "value": "functionResponse",
+                                                "nested": [
+                                                    {
+                                                        "name": "functionResponse",
+                                                        "spec": [
+                                                            {
+                                                                "help": "The name of the function to call.",
+                                                                "name": "name",
+                                                                "type": "text",
+                                                                "label": "Name",
+                                                                "required": true,
+                                                                "validate": {
+                                                                    "max": 64
+                                                                }
+                                                            },
+                                                            {
+                                                                "help": "The function response in JSON object format.",
+                                                                "name": "response",
+                                                                "type": "json",
+                                                                "label": "Response",
+                                                                "required": true
+                                                            }
+                                                        ],
+                                                        "type": "collection",
+                                                        "label": "Function Response"
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "thoughtSignature",
+                                        "type": "text",
+                                        "label": "Thought Signature"
+                                    }
+                                ],
+                                "type": "array",
+                                "label": "Parts",
+                                "required": true
+                            }
+                        ],
+                        "type": "array",
+                        "label": "Messages",
+                        "required": true
+                    },
+                    {
+                        "name": "system_instruction",
+                        "spec": [
+                            {
+                                "name": "parts",
+                                "spec": {
+                                    "name": "value",
+                                    "spec": [
+                                        {
+                                            "name": "text",
+                                            "type": "text",
+                                            "label": "Value"
+                                        }
+                                    ],
+                                    "type": "collection",
+                                    "label": "Prompt"
+                                },
+                                "type": "array",
+                                "label": "Prompts"
+                            }
+                        ],
+                        "type": "collection",
+                        "label": "System Instructions"
+                    },
+                    {
+                        "name": "safetySettings",
+                        "spec": [
+                            {
+                                "name": "category",
+                                "type": "select",
+                                "label": "Category",
+                                "options": [
+                                    {
+                                        "label": "Harassment content",
+                                        "value": "HARM_CATEGORY_HARASSMENT"
+                                    },
+                                    {
+                                        "label": "Hate speech and content",
+                                        "value": "HARM_CATEGORY_HATE_SPEECH"
+                                    },
+                                    {
+                                        "label": "Sexually explicit content.",
+                                        "value": "HARM_CATEGORY_SEXUALLY_EXPLICIT"
+                                    },
+                                    {
+                                        "label": "Dangerous content:",
+                                        "value": "HARM_CATEGORY_DANGEROUS_CONTENT"
+                                    }
+                                ]
+                            },
+                            {
+                                "name": "threshold",
+                                "type": "select",
+                                "label": "Threshold",
+                                "options": [
+                                    {
+                                        "label": "Block low and above.",
+                                        "value": "BLOCK_LOW_AND_ABOVE"
+                                    },
+                                    {
+                                        "label": "Block medium and above.",
+                                        "value": "BLOCK_MEDIUM_AND_ABOVE"
+                                    },
+                                    {
+                                        "label": "Block only high.",
+                                        "value": "BLOCK_ONLY_HIGH"
+                                    },
+                                    {
+                                        "label": "Block none.",
+                                        "value": "BLOCK_NONE"
+                                    }
+                                ]
+                            }
+                        ],
+                        "type": "array",
+                        "label": "Safety Settings"
+                    },
+                    {
+                        "name": "generationConfig",
+                        "spec": [
+                            {
+                                "name": "stopSequences",
+                                "spec": {
+                                    "name": "value",
+                                    "type": "text",
+                                    "label": "Stop Sequence"
+                                },
+                                "type": "array",
+                                "label": "Stop Sequences"
+                            },
+                            {
+                                "name": "responseModalities",
+                                "type": "select",
+                                "label": "Response Modalities",
+                                "multiple": true,
+                                "validate": {
+                                    "enum": [
+                                        "text",
+                                        "image"
+                                    ]
+                                }
+                            },
+                            {
+                                "name": "maxOutputTokens",
+                                "type": "number",
+                                "label": "Max Output Tokens"
+                            },
+                            {
+                                "name": "temperature",
+                                "type": "number",
+                                "label": "Temperature",
+                                "validate": {
+                                    "max": 1,
+                                    "min": 0
+                                }
+                            },
+                            {
+                                "name": "topP",
+                                "type": "number",
+                                "label": "Top P",
+                                "validate": {
+                                    "max": 1,
+                                    "min": 0
+                                }
+                            },
+                            {
+                                "name": "topK",
+                                "type": "number",
+                                "label": "Top K"
+                            },
+                            {
+                                "name": "thinkingConfig",
+                                "spec": [
+                                    {
+                                        "name": "thinkingBudget",
+                                        "type": "number",
+                                        "label": "Thinking Budget"
+                                    },
+                                    {
+                                        "name": "include_thoughts",
+                                        "type": "boolean",
+                                        "label": "Include Thoughts"
+                                    },
+                                    {
+                                        "name": "thinking_level",
+                                        "type": "select",
+                                        "label": "Thinking Level",
+                                        "validate": {
+                                            "enum": [
+                                                "low",
+                                                "high"
+                                            ]
+                                        }
+                                    }
+                                ],
+                                "type": "collection",
+                                "label": "Thinking Config"
+                            },
+                            {
+                                "name": "mediaResolution",
+                                "type": "select",
+                                "label": "Media Resolution",
+                                "validate": {
+                                    "enum": [
+                                        "media_resolution_low",
+                                        "media_resolution_medium",
+                                        "media_resolution_high"
+                                    ]
+                                }
+                            },
+                            {
+                                "name": "imageConfig",
+                                "spec": [
+                                    {
+                                        "name": "imageSize",
+                                        "type": "select",
+                                        "label": "Image Size",
+                                        "validate": {
+                                            "enum": [
+                                                "1K",
+                                                "2K",
+                                                "4K"
+                                            ]
+                                        }
+                                    }
+                                ],
+                                "type": "collection",
+                                "label": "Image Configuration"
+                            },
+                            {
+                                "name": "responseMimeType",
+                                "type": "select",
+                                "label": "Response Format"
+                            },
+                            {
+                                "name": "responseSchema",
+                                "type": "any",
+                                "label": "Response Schema (Deprecated)"
+                            },
+                            {
+                                "name": "new_responseSchema",
+                                "spec": [
+                                    {
+                                        "name": "type",
+                                        "type": "select",
+                                        "label": "Value Type",
+                                        "options": [
+                                            {
+                                                "label": "String",
+                                                "value": "string",
+                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=string"
+                                            },
+                                            {
+                                                "label": "Enum",
+                                                "value": "enum",
+                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=enum"
+                                            },
+                                            {
+                                                "label": "Number",
+                                                "value": "number",
+                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=number"
+                                            },
+                                            {
+                                                "label": "Integer",
+                                                "value": "integer",
+                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=integer"
+                                            },
+                                            {
+                                                "label": "Boolean",
+                                                "value": "boolean",
+                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=boolean"
+                                            },
+                                            {
+                                                "label": "Object",
+                                                "value": "object",
+                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=object"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "type": "array",
+                                "label": "Response Schema"
+                            }
+                        ],
+                        "type": "collection",
+                        "label": "Generation configurations"
+                    },
+                    {
+                        "name": "tools",
+                        "type": "any",
+                        "label": "Tools"
+                    },
+                    {
+                        "name": "tool_config",
+                        "type": "any",
+                        "label": "Tool Config"
+                    },
+                    {
+                        "name": "function_declarations_context",
+                        "type": "boolean",
+                        "label": "Function Declarations Grounding"
+                    },
+                    {
+                        "name": "url_context",
+                        "type": "boolean",
+                        "label": "URL Context"
+                    },
+                    {
+                        "name": "google_search_context",
+                        "type": "boolean",
+                        "label": "Google Search Grounding"
+                    },
+                    {
+                        "name": "code_execution",
+                        "type": "boolean",
+                        "label": "Code Execution"
+                    },
+                    {
+                        "name": "google_maps_context",
+                        "type": "boolean",
+                        "label": "Google Maps Grounding"
+                    },
+                    {
+                        "name": "file_search_store_context",
+                        "type": "boolean",
+                        "label": "File Search Store Context"
+                    },
+                    {
+                        "name": "serviceTier",
+                        "type": "select",
+                        "label": "Inference Service Tier"
+                    }
+                ]
+            },
+            "onerror": [
+                {
+                    "id": 950,
+                    "module": "gateway:WebhookRespond",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {
+                        "body": "{\"error\": \"Clasificar › clasificación del mensaje (Gemini)\"}",
+                        "status": "500",
+                        "headers": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "metadata": {
+                        "designer": {
+                            "x": 1200,
+                            "y": 300
+                        }
+                    }
+                },
+                {
+                    "id": 951,
+                    "module": "builtin:Commit",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {},
+                    "metadata": {
+                        "designer": {
+                            "x": 1500,
+                            "y": 300
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "module": "gateway:WebhookRespond",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "body": "{\"acto\": \"{{escapeJSON(50.result.acto)}}\", \"examen\": \"{{escapeJSON(50.result.examen)}}\", \"curso_accion\": \"{{escapeJSON(50.result.curso_accion)}}\", \"accion\": \"{{escapeJSON(50.result.accion)}}\", \"dia\": \"{{escapeJSON(50.result.dia)}}\", \"hora\": \"{{escapeJSON(50.result.hora)}}\", \"fin\": \"{{escapeJSON(50.result.fin)}}\", \"condicion\": \"{{escapeJSON(50.result.condicion)}}\", \"simbolos\": \"{{escapeJSON(50.result.simbolos)}}\", \"contenido\": \"{{escapeJSON(50.result.contenido)}}\", \"libera\": \"{{escapeJSON(50.result.libera)}}\", \"repite\": \"{{escapeJSON(50.result.repite)}}\", \"vetado_por\": \"{{escapeJSON(50.result.vetado_por)}}\", \"informe\": \"{{escapeJSON(50.result.informe)}}\", \"respuesta\": \"{{escapeJSON(50.result.respuesta)}}\"}",
+                "status": "200",
+                "headers": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 903,
+                    "module": "builtin:Commit",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {},
+                    "metadata": {
+                        "designer": {
+                            "x": 1500,
+                            "y": 0
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": []
+    }
+}

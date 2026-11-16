@@ -1,0 +1,2436 @@
+{
+    "name": "[Human_proxy]:[03-Planning] (08/20) | Comprometer",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": "__HOOK_COMPROMETER__",
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 1500
+                },
+                "setupValidation": {
+                    "result": {
+                        "valid": true,
+                        "fields": []
+                    },
+                    "version": 1,
+                    "configuration": "d758236de97ea791"
+                },
+                "restore": {
+                    "parameters": {
+                        "hook": {
+                            "data": {
+                                "editable": "true"
+                            },
+                            "label": "[Human_proxy] Comprometer"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "hook",
+                        "type": "hook:gateway-webhook",
+                        "label": "Webhook",
+                        "required": true
+                    },
+                    {
+                        "name": "maxResults",
+                        "type": "number",
+                        "label": "Maximum number of results"
+                    }
+                ],
+                "interface": [
+                    {
+                        "name": "agente",
+                        "type": "text"
+                    },
+                    {
+                        "name": "chat_id",
+                        "type": "text"
+                    },
+                    {
+                        "name": "acto",
+                        "type": "text"
+                    },
+                    {
+                        "name": "accion",
+                        "type": "text"
+                    },
+                    {
+                        "name": "dia",
+                        "type": "text"
+                    },
+                    {
+                        "name": "hora",
+                        "type": "text"
+                    },
+                    {
+                        "name": "fin",
+                        "type": "text"
+                    },
+                    {
+                        "name": "condicion",
+                        "type": "text"
+                    },
+                    {
+                        "name": "simbolos",
+                        "type": "text"
+                    },
+                    {
+                        "name": "contenido",
+                        "type": "text"
+                    },
+                    {
+                        "name": "origen",
+                        "type": "text"
+                    },
+                    {
+                        "name": "nivel",
+                        "type": "text"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "module": "code:ExecuteCode",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "input": [
+                    {
+                        "name": "acto",
+                        "value": "{{1.acto}}"
+                    },
+                    {
+                        "name": "accion",
+                        "value": "{{1.accion}}"
+                    },
+                    {
+                        "name": "chat_id",
+                        "value": "{{1.chat_id}}"
+                    },
+                    {
+                        "name": "contenido",
+                        "value": "{{1.contenido}}"
+                    },
+                    {
+                        "name": "simbolos",
+                        "value": "{{1.simbolos}}"
+                    },
+                    {
+                        "name": "condicion",
+                        "value": "{{1.condicion}}"
+                    },
+                    {
+                        "name": "nivel",
+                        "value": "{{1.nivel}}"
+                    },
+                    {
+                        "name": "dia",
+                        "value": "{{1.dia}}"
+                    },
+                    {
+                        "name": "hora",
+                        "value": "{{1.hora}}"
+                    },
+                    {
+                        "name": "fin",
+                        "value": "{{1.fin}}"
+                    },
+                    {
+                        "name": "ahora",
+                        "value": "{{now}}"
+                    }
+                ],
+                "language": "javascript",
+                "inputFormat": "editor",
+                "dependencies": [],
+                "codeEditorJavascript": "// [Human_proxy] Comprometer · Preparación del compromiso\n// Normaliza la entrada, ajusta el momento al horario de trabajo (laborables de 8:00 a 20:30, hora de Madrid)\n// y calcula la fecha de fin y la línea del compromiso.\nconst { acto, accion, chat_id, contenido, simbolos, condicion, nivel, dia, hora, fin, ahora } = input;\n\nconst txt = x => (x === undefined || x === null) ? '' : String(x);\nconst limpio = x => txt(x).trim();\nconst p2 = n => String(n).padStart(2, '0');\n\n// Hora de Madrid: +2 entre el último domingo de marzo y el último de octubre (a la 01:00 UTC), +1 el resto del año\nconst ultimoDomingo = (anio, mes) => { const d = new Date(Date.UTC(anio, mes + 1, 0, 1)); d.setUTCDate(d.getUTCDate() - d.getUTCDay()); return d; };\nconst desfase = utc => { const a = utc.getUTCFullYear(); return (utc >= ultimoDomingo(a, 2) && utc < ultimoDomingo(a, 9)) ? 2 : 1; };\nconst aMadrid = utc => { const m = new Date(utc.getTime() + desfase(utc) * 3600e3); return { Y: m.getUTCFullYear(), M: m.getUTCMonth() + 1, D: m.getUTCDate(), h: m.getUTCHours(), mi: m.getUTCMinutes(), d: m.getUTCDay() }; };\nconst deMadrid = (Y, M, D, h, mi) => { for (const o of [1, 2]) { const u = new Date(Date.UTC(Y, M - 1, D, h, mi) - o * 3600e3); if (desfase(u) === o) return u; } return new Date(Date.UTC(Y, M - 1, D, h, mi) - 3600e3); };\nconst masDias = (l, n, h, mi) => { const f = new Date(Date.UTC(l.Y, l.M - 1, l.D + n)); return deMadrid(f.getUTCFullYear(), f.getUTCMonth() + 1, f.getUTCDate(), h, mi); };\nconst leer = texto => { const r = /^(\\d{4})-(\\d{2})-(\\d{2}) (\\d{2}):(\\d{2})$/.exec(texto); if (!r) throw new Error('Fecha u hora no válida: ' + texto); return deMadrid(+r[1], +r[2], +r[3], +r[4], +r[5]); };\n\n// 1. Entrada normalizada\nconst cm_acto = (limpio(acto) || 'DECISION').toUpperCase();\nconst cm_accion = limpio(accion).toLowerCase();\nconst cm_chat = limpio(chat_id);\nconst cm_contenido = limpio(contenido);\nconst cm_simbolos = limpio(simbolos).replace(/ /g, '').toUpperCase();\nconst cm_condicion = limpio(condicion);\nconst cm_nivel_txt = txt(nivel) !== '' ? nivel : 0;\n\n// Fecha y hora pedidas: el día que llega o hoy; la hora que llega, las 08:00 si hay día o la hora actual si no\nconst hoy = aMadrid(ahora ? new Date(ahora) : new Date());\nconst diaPedido = txt(dia) !== '' ? txt(dia) : `${hoy.Y}-${p2(hoy.M)}-${p2(hoy.D)}`;\nconst horaPedida = txt(hora) !== '' ? txt(hora) : (txt(dia) !== '' ? '08:00' : `${p2(hoy.h)}:${p2(hoy.mi)}`);\nconst pedido = leer(`${diaPedido} ${horaPedida}`);\n\n// 2. Momento ajustado al horario de trabajo\nconst l = aMadrid(pedido);\nconst laborable = l.d >= 1 && l.d <= 5;\nconst minutos = l.h * 60 + l.mi;\nconst tramo = minutos < 8 * 60 ? 'antes' : (minutos <= 20 * 60 + 30 ? 'dentro' : 'despues');\nconst saltos = l.d === 5 ? 3 : (l.d === 6 ? 2 : 1); // al siguiente laborable\nlet momento;\nif (laborable && tramo === 'dentro') momento = pedido;\nelse if (laborable && tramo === 'antes') momento = deMadrid(l.Y, l.M, l.D, 8, 0);\nelse momento = masDias(l, saltos, 8, 0);\nconst cm_aplazado = (laborable && tramo === 'dentro') ? 'no' : 'si';\nconst lm = aMadrid(momento);\n\n// 3. Con quién y de qué tipo\nconst escribeAlChat = ['informar', 'preguntar', 'abstenerse'].includes(cm_accion);\nconst chatReal = (cm_chat === '' || cm_chat === 'GLOBAL') ? '' : cm_chat;\nconst cm_dest = escribeAlChat ? chatReal : '';\nconst cm_con = (cm_acto === 'REQUEST' && chatReal) ? chatReal : 'yo';\nconst cm_tipo = ({ agendar: 'DO', estudiar: 'DO', cotizar: 'DO', investigar: 'DO', informar: 'INFORM', preguntar: 'REQUEST', abstenerse: 'REFRAIN' })[cm_accion] || '';\n\n// 4. Fin, momento legible y línea del compromiso\nlet finFecha = null;\nif (txt(fin) !== '') finFecha = leer(`${limpio(fin)} 20:30`);\nelse if (cm_accion === 'abstenerse') finFecha = null;\nelse if (cm_condicion !== '') finFecha = masDias(lm, 7, lm.h, lm.mi);\nelse if (cm_accion === 'estudiar') finFecha = deMadrid(lm.Y, lm.M, lm.D, 20, 30);\nconst cm_fin = finFecha ? finFecha.toISOString() : '';\nconst cm_cuando = `${p2(lm.D)}/${p2(lm.M)} a las ${p2(lm.h)}:${p2(lm.mi)}`;\nconst nucleo = `(${cm_tipo} ${p2(lm.D)}/${p2(lm.M)} ${p2(lm.h)}:${p2(lm.mi)} ${cm_accion}${cm_dest ? ' chat:' : ''}${cm_dest} «${cm_contenido}»)`;\nconst cm_linea = cm_condicion ? `(IF (B «${cm_condicion}») ${nucleo})` : nucleo;\n\nreturn {\n  cm_acto, cm_accion, cm_chat, cm_contenido, cm_simbolos, cm_condicion, cm_nivel_txt,\n  cm_momento: momento.toISOString(), cm_aplazado, cm_dest, cm_con, cm_tipo,\n  cm_fin, cm_cuando, cm_linea,\n};\n"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 1500
+                }
+            },
+            "onerror": [
+                {
+                    "id": 903,
+                    "module": "gateway:WebhookRespond",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {
+                        "body": "{\"error\":\"Comprometer › preparación del compromiso (código)\"}",
+                        "status": "500",
+                        "headers": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "metadata": {
+                        "designer": {
+                            "x": 600,
+                            "y": 3000
+                        }
+                    }
+                },
+                {
+                    "id": 1003,
+                    "module": "builtin:Commit",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {},
+                    "metadata": {
+                        "designer": {
+                            "x": 900,
+                            "y": 3000
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": 31,
+            "module": "util:SetVariables",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "scope": "roundtrip",
+                "variables": [
+                    {
+                        "name": "cm_ok_accion",
+                        "value": "{{if(contains(split(switch(3.result.cm_acto; \"REQUEST\"; \"informar,preguntar,estudiar,investigar,cotizar,abstenerse\"; \"DECISION\"; \"agendar,informar,preguntar,estudiar,investigar,cotizar,abstenerse\"; \"-\"); \",\"); 3.result.cm_accion); \"si\"; \"no\")}}"
+                    },
+                    {
+                        "name": "cm_ok_dest",
+                        "value": "{{if(contains(split(\"informar,preguntar,abstenerse\"; \",\"); 3.result.cm_accion); if(3.result.cm_dest; \"si\"; \"no\"); \"si\")}}"
+                    },
+                    {
+                        "name": "cm_ok_nivel",
+                        "value": "{{if(contains(split(\"0,1,2\"; \",\"); 3.result.cm_nivel_txt); \"si\"; \"no\")}}"
+                    },
+                    {
+                        "name": "cm_ok_cont",
+                        "value": "{{if(3.result.cm_contenido; \"si\"; \"no\")}}"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 1350
+                }
+            }
+        },
+        {
+            "id": 80,
+            "module": "builtin:BasicRouter",
+            "version": 1,
+            "mapper": null,
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 1350
+                }
+            },
+            "routes": [
+                {
+                    "flow": [
+                        {
+                            "id": 81,
+                            "module": "gateway:WebhookRespond",
+                            "version": 1,
+                            "parameters": {},
+                            "filter": {
+                                "name": "Faltan datos o no sabe hacerlo",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{3.result.cm_acto}}",
+                                            "b": "UNREQUEST",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "{{31.cm_ok_accion}}",
+                                            "b": "no",
+                                            "o": "text:equal"
+                                        }
+                                    ],
+                                    [
+                                        {
+                                            "a": "{{3.result.cm_acto}}",
+                                            "b": "UNREQUEST",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "{{31.cm_ok_cont}}",
+                                            "b": "no",
+                                            "o": "text:equal"
+                                        }
+                                    ],
+                                    [
+                                        {
+                                            "a": "{{3.result.cm_acto}}",
+                                            "b": "UNREQUEST",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "{{31.cm_ok_dest}}",
+                                            "b": "no",
+                                            "o": "text:equal"
+                                        }
+                                    ],
+                                    [
+                                        {
+                                            "a": "{{3.result.cm_acto}}",
+                                            "b": "UNREQUEST",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "{{31.cm_ok_nivel}}",
+                                            "b": "no",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "body": "RECHAZADO. Borja no se compromete porque {{if(contains(split(31.cm_ok_accion; \",\"); \"no\"); \"no sabe hacer eso o no le corresponde\"; if(contains(split(31.cm_ok_cont; \",\"); \"no\"); \"no está claro qué tiene que hacer\"; if(contains(split(31.cm_ok_dest; \",\"); \"no\"); \"no sabe a quién tendría que escribir\"; \"sería una cadena de compromisos demasiado larga\")))}}.",
+                                "status": "200",
+                                "headers": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "text/plain; charset=utf-8"
+                                    }
+                                ]
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": 0
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 981,
+                                    "module": "builtin:Commit",
+                                    "version": 1,
+                                    "parameters": {},
+                                    "mapper": {},
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1500,
+                                            "y": 0
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 6,
+                            "module": "datastore:SearchRecord",
+                            "version": 1,
+                            "parameters": {
+                                "limit": 100,
+                                "datastore": "__ALMACEN_COMPROMISOS__",
+                                "continueWhenNoRes": true
+                            },
+                            "filter": {
+                                "name": "Es una liberación o los datos están completos",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{3.result.cm_acto}}",
+                                            "b": "UNREQUEST",
+                                            "o": "text:equal"
+                                        }
+                                    ],
+                                    [
+                                        {
+                                            "a": "{{31.cm_ok_accion}}",
+                                            "b": "si",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "{{31.cm_ok_cont}}",
+                                            "b": "si",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "{{31.cm_ok_dest}}",
+                                            "b": "si",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "{{31.cm_ok_nivel}}",
+                                            "b": "si",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "sort": [
+                                    {
+                                        "key": "momento",
+                                        "order": 1
+                                    }
+                                ],
+                                "filter": [
+                                    [
+                                        {
+                                            "a": "agente",
+                                            "b": "{{1.agente}}",
+                                            "o": "text:equal"
+                                        },
+                                        {
+                                            "a": "estado",
+                                            "b": "cumplido",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "estado",
+                                            "b": "fallido",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "estado",
+                                            "b": "liberado",
+                                            "o": "text:notequal"
+                                        },
+                                        {
+                                            "a": "estado",
+                                            "b": "caducado",
+                                            "o": "text:notequal"
+                                        }
+                                    ]
+                                ],
+                                "mappAbleLimit": ""
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1200,
+                                    "y": 1500
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 906,
+                                    "module": "gateway:WebhookRespond",
+                                    "version": 1,
+                                    "parameters": {},
+                                    "mapper": {
+                                        "body": "{\"error\":\"Comprometer › lectura de los compromisos (almacén Compromisos)\"}",
+                                        "status": "500",
+                                        "headers": [
+                                            {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                            }
+                                        ]
+                                    },
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1500,
+                                            "y": 2700
+                                        }
+                                    }
+                                },
+                                {
+                                    "id": 1006,
+                                    "module": "builtin:Commit",
+                                    "version": 1,
+                                    "parameters": {},
+                                    "mapper": {},
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 1800,
+                                            "y": 2700
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 50,
+                            "module": "util:TextAggregator",
+                            "version": 1,
+                            "parameters": {
+                                "feeder": 6,
+                                "rowSeparator": "\n"
+                            },
+                            "mapper": {
+                                "value": "{{if(contains(split(3.result.cm_chat; \",\"); ifempty(6.data.chat; ifempty(6.data.destinatario; ifempty(6.data.comprometido_con; \"-\")))); 6.key; \"\")}}{{if(contains(split(3.result.cm_chat; \",\"); ifempty(6.data.chat; ifempty(6.data.destinatario; ifempty(6.data.comprometido_con; \"-\")))); \" · \"; \"\")}}{{if(contains(split(3.result.cm_chat; \",\"); ifempty(6.data.chat; ifempty(6.data.destinatario; ifempty(6.data.comprometido_con; \"-\")))); 6.data.linea; \"\")}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": 1350
+                                }
+                            }
+                        },
+                        {
+                            "id": 7,
+                            "module": "builtin:BasicRouter",
+                            "version": 1,
+                            "mapper": null,
+                            "metadata": {
+                                "designer": {
+                                    "x": 1800,
+                                    "y": 1350
+                                }
+                            },
+                            "routes": [
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 60,
+                                            "module": "gemini-ai:createACompletionGeminiPro",
+                                            "version": 1,
+                                            "parameters": {
+                                                "__IMTCONN__": "__CONEXION_GEMINI__"
+                                            },
+                                            "filter": {
+                                                "name": "Es una liberación",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{3.result.cm_acto}}",
+                                                            "b": "UNREQUEST",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "model": "gemini-3.8-flash",
+                                                "contents": [
+                                                    {
+                                                        "role": "user",
+                                                        "parts": [
+                                                            {
+                                                                "text": "<context>\nCompromisos vigentes de {{1.agente}} con su interlocutor, uno por línea, cada uno precedido de su clave:\n<lista_vigentes>\n{{ifempty(join(remove(split(50.text; newline); ); newline); \"ninguno\")}}\n</lista_vigentes>\n\nPetición del interlocutor para dejar de hacer algo:\n- acción: {{3.result.cm_accion}}\n- contenido: {{3.result.cm_contenido}}\n- condición: {{3.result.cm_condicion}}\n- valores: {{3.result.cm_simbolos}}\n</context>\n\n<instructions>\n¿Qué compromisos de <lista_vigentes> quedan anulados por esta petición?\n</instructions>\n\n<output_format>\nlineas:\n<copia aquí las líneas de esos compromisos tal como aparecen en la lista. Si no hay ninguno, deja este espacio totalmente en blanco>\n</output_format>",
+                                                                "type": "text"
+                                                            }
+                                                        ]
+                                                    }
+                                                ],
+                                                "generationConfig": {
+                                                    "imageConfig": {},
+                                                    "responseSchema": "{\"type\":\"object\",\"properties\":{\"lineas\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"lineas\"]}",
+                                                    "thinkingConfig": {},
+                                                    "responseMimeType": "application/json"
+                                                },
+                                                "system_instruction": {
+                                                    "parts": [
+                                                        {
+                                                            "text": "Recibes lo que el interlocutor de un agente le pide que deje de hacer y los compromisos vigentes del agente con él. Juzgas por el significado, no por las palabras. Respondes solo con el JSON pedido."
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2100,
+                                                    "y": 600
+                                                },
+                                                "setupValidation": {
+                                                    "result": {
+                                                        "valid": true,
+                                                        "fields": []
+                                                    },
+                                                    "version": 1,
+                                                    "configuration": "2d42bacef59d2140"
+                                                },
+                                                "restore": {
+                                                    "expect": {
+                                                        "model": {
+                                                            "mode": "chose",
+                                                            "label": "Gemini 3.8 Flash"
+                                                        },
+                                                        "contents": {
+                                                            "mode": "chose",
+                                                            "items": [
+                                                                {
+                                                                    "role": {
+                                                                        "mode": "chose",
+                                                                        "label": "User"
+                                                                    },
+                                                                    "parts": {
+                                                                        "mode": "chose",
+                                                                        "items": [
+                                                                            {
+                                                                                "type": {
+                                                                                    "mode": "chose",
+                                                                                    "label": "Text"
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            ]
+                                                        },
+                                                        "serviceTier": {
+                                                            "mode": "chose",
+                                                            "label": "Empty"
+                                                        },
+                                                        "url_context": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "code_execution": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "safetySettings": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "generationConfig": {
+                                                            "nested": {
+                                                                "imageConfig": {
+                                                                    "nested": {
+                                                                        "imageSize": {
+                                                                            "mode": "chose",
+                                                                            "label": "Empty"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "stopSequences": {
+                                                                    "mode": "chose"
+                                                                },
+                                                                "thinkingConfig": {
+                                                                    "nested": {
+                                                                        "thinking_level": {
+                                                                            "mode": "chose",
+                                                                            "label": "Empty"
+                                                                        },
+                                                                        "include_thoughts": {
+                                                                            "mode": "chose"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "mediaResolution": {
+                                                                    "mode": "chose",
+                                                                    "label": "Empty"
+                                                                },
+                                                                "responseMimeType": {
+                                                                    "mode": "chose",
+                                                                    "label": "JSON Output"
+                                                                },
+                                                                "new_responseSchema": {
+                                                                    "mode": "chose"
+                                                                },
+                                                                "responseModalities": {
+                                                                    "mode": "chose"
+                                                                }
+                                                            }
+                                                        },
+                                                        "system_instruction": {
+                                                            "nested": {
+                                                                "parts": {
+                                                                    "mode": "chose",
+                                                                    "items": [
+                                                                        null
+                                                                    ]
+                                                                }
+                                                            }
+                                                        },
+                                                        "google_maps_context": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "google_search_context": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "file_search_store_context": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "function_declarations_context": {
+                                                            "mode": "chose"
+                                                        }
+                                                    },
+                                                    "parameters": {
+                                                        "__IMTCONN__": {
+                                                            "data": {
+                                                                "scoped": "true",
+                                                                "connection": "gemini-ai-q9zyjp"
+                                                            },
+                                                            "label": "Gemini AI connection"
+                                                        }
+                                                    }
+                                                },
+                                                "parameters": [
+                                                    {
+                                                        "name": "__IMTCONN__",
+                                                        "type": "account:gemini-ai-q9zyjp",
+                                                        "label": "Connection",
+                                                        "required": true
+                                                    }
+                                                ],
+                                                "expect": [
+                                                    {
+                                                        "name": "model",
+                                                        "type": "select",
+                                                        "label": "AI Model",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "contents",
+                                                        "spec": [
+                                                            {
+                                                                "name": "role",
+                                                                "type": "select",
+                                                                "label": "Role",
+                                                                "options": [
+                                                                    {
+                                                                        "label": "User",
+                                                                        "value": "user"
+                                                                    },
+                                                                    {
+                                                                        "label": "Model",
+                                                                        "value": "model"
+                                                                    }
+                                                                ],
+                                                                "required": true
+                                                            },
+                                                            {
+                                                                "name": "parts",
+                                                                "spec": [
+                                                                    {
+                                                                        "name": "type",
+                                                                        "type": "select",
+                                                                        "label": "Message Type",
+                                                                        "options": [
+                                                                            {
+                                                                                "label": "Text",
+                                                                                "value": "text",
+                                                                                "nested": [
+                                                                                    {
+                                                                                        "name": "text",
+                                                                                        "type": "text",
+                                                                                        "label": "Text",
+                                                                                        "required": true
+                                                                                    }
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "label": "File",
+                                                                                "value": "file",
+                                                                                "nested": [
+                                                                                    {
+                                                                                        "name": "file_data",
+                                                                                        "spec": [
+                                                                                            {
+                                                                                                "name": "mime_type",
+                                                                                                "type": "text",
+                                                                                                "label": "Mime Type",
+                                                                                                "required": true
+                                                                                            },
+                                                                                            {
+                                                                                                "help": "You can use public or signed URLs as input by using the URLs.",
+                                                                                                "name": "file_uri",
+                                                                                                "type": "text",
+                                                                                                "label": "File URI",
+                                                                                                "required": true
+                                                                                            }
+                                                                                        ],
+                                                                                        "type": "collection",
+                                                                                        "label": "File Data",
+                                                                                        "required": true
+                                                                                    }
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "label": "Function Call",
+                                                                                "value": "functionCall",
+                                                                                "nested": [
+                                                                                    {
+                                                                                        "name": "functionCall",
+                                                                                        "spec": [
+                                                                                            {
+                                                                                                "help": "The name of the function to call.",
+                                                                                                "name": "name",
+                                                                                                "type": "text",
+                                                                                                "label": "Name",
+                                                                                                "required": true,
+                                                                                                "validate": {
+                                                                                                    "max": 64
+                                                                                                }
+                                                                                            },
+                                                                                            {
+                                                                                                "help": "The function parameters and values in JSON object format.",
+                                                                                                "name": "args",
+                                                                                                "type": "json",
+                                                                                                "label": "Arguments"
+                                                                                            },
+                                                                                            {
+                                                                                                "help": "The unique ID of the function call.",
+                                                                                                "name": "id",
+                                                                                                "type": "text",
+                                                                                                "label": "Function Call ID"
+                                                                                            }
+                                                                                        ],
+                                                                                        "type": "collection",
+                                                                                        "label": "Function Call"
+                                                                                    }
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "label": "Function Response",
+                                                                                "value": "functionResponse",
+                                                                                "nested": [
+                                                                                    {
+                                                                                        "name": "functionResponse",
+                                                                                        "spec": [
+                                                                                            {
+                                                                                                "help": "The name of the function to call.",
+                                                                                                "name": "name",
+                                                                                                "type": "text",
+                                                                                                "label": "Name",
+                                                                                                "required": true,
+                                                                                                "validate": {
+                                                                                                    "max": 64
+                                                                                                }
+                                                                                            },
+                                                                                            {
+                                                                                                "help": "The function response in JSON object format.",
+                                                                                                "name": "response",
+                                                                                                "type": "json",
+                                                                                                "label": "Response",
+                                                                                                "required": true
+                                                                                            }
+                                                                                        ],
+                                                                                        "type": "collection",
+                                                                                        "label": "Function Response"
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        ],
+                                                                        "required": true
+                                                                    },
+                                                                    {
+                                                                        "name": "thoughtSignature",
+                                                                        "type": "text",
+                                                                        "label": "Thought Signature"
+                                                                    }
+                                                                ],
+                                                                "type": "array",
+                                                                "label": "Parts",
+                                                                "required": true
+                                                            }
+                                                        ],
+                                                        "type": "array",
+                                                        "label": "Messages",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "system_instruction",
+                                                        "spec": [
+                                                            {
+                                                                "name": "parts",
+                                                                "spec": {
+                                                                    "name": "value",
+                                                                    "spec": [
+                                                                        {
+                                                                            "name": "text",
+                                                                            "type": "text",
+                                                                            "label": "Value"
+                                                                        }
+                                                                    ],
+                                                                    "type": "collection",
+                                                                    "label": "Prompt"
+                                                                },
+                                                                "type": "array",
+                                                                "label": "Prompts"
+                                                            }
+                                                        ],
+                                                        "type": "collection",
+                                                        "label": "System Instructions"
+                                                    },
+                                                    {
+                                                        "name": "safetySettings",
+                                                        "spec": [
+                                                            {
+                                                                "name": "category",
+                                                                "type": "select",
+                                                                "label": "Category",
+                                                                "options": [
+                                                                    {
+                                                                        "label": "Harassment content",
+                                                                        "value": "HARM_CATEGORY_HARASSMENT"
+                                                                    },
+                                                                    {
+                                                                        "label": "Hate speech and content",
+                                                                        "value": "HARM_CATEGORY_HATE_SPEECH"
+                                                                    },
+                                                                    {
+                                                                        "label": "Sexually explicit content.",
+                                                                        "value": "HARM_CATEGORY_SEXUALLY_EXPLICIT"
+                                                                    },
+                                                                    {
+                                                                        "label": "Dangerous content:",
+                                                                        "value": "HARM_CATEGORY_DANGEROUS_CONTENT"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "name": "threshold",
+                                                                "type": "select",
+                                                                "label": "Threshold",
+                                                                "options": [
+                                                                    {
+                                                                        "label": "Block low and above.",
+                                                                        "value": "BLOCK_LOW_AND_ABOVE"
+                                                                    },
+                                                                    {
+                                                                        "label": "Block medium and above.",
+                                                                        "value": "BLOCK_MEDIUM_AND_ABOVE"
+                                                                    },
+                                                                    {
+                                                                        "label": "Block only high.",
+                                                                        "value": "BLOCK_ONLY_HIGH"
+                                                                    },
+                                                                    {
+                                                                        "label": "Block none.",
+                                                                        "value": "BLOCK_NONE"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ],
+                                                        "type": "array",
+                                                        "label": "Safety Settings"
+                                                    },
+                                                    {
+                                                        "name": "generationConfig",
+                                                        "spec": [
+                                                            {
+                                                                "name": "stopSequences",
+                                                                "spec": {
+                                                                    "name": "value",
+                                                                    "type": "text",
+                                                                    "label": "Stop Sequence"
+                                                                },
+                                                                "type": "array",
+                                                                "label": "Stop Sequences"
+                                                            },
+                                                            {
+                                                                "name": "responseModalities",
+                                                                "type": "select",
+                                                                "label": "Response Modalities",
+                                                                "multiple": true,
+                                                                "validate": {
+                                                                    "enum": [
+                                                                        "text",
+                                                                        "image"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "name": "maxOutputTokens",
+                                                                "type": "number",
+                                                                "label": "Max Output Tokens"
+                                                            },
+                                                            {
+                                                                "name": "temperature",
+                                                                "type": "number",
+                                                                "label": "Temperature",
+                                                                "validate": {
+                                                                    "max": 1,
+                                                                    "min": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "name": "topP",
+                                                                "type": "number",
+                                                                "label": "Top P",
+                                                                "validate": {
+                                                                    "max": 1,
+                                                                    "min": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "name": "topK",
+                                                                "type": "number",
+                                                                "label": "Top K"
+                                                            },
+                                                            {
+                                                                "name": "thinkingConfig",
+                                                                "spec": [
+                                                                    {
+                                                                        "name": "thinkingBudget",
+                                                                        "type": "number",
+                                                                        "label": "Thinking Budget"
+                                                                    },
+                                                                    {
+                                                                        "name": "include_thoughts",
+                                                                        "type": "boolean",
+                                                                        "label": "Include Thoughts"
+                                                                    },
+                                                                    {
+                                                                        "name": "thinking_level",
+                                                                        "type": "select",
+                                                                        "label": "Thinking Level",
+                                                                        "validate": {
+                                                                            "enum": [
+                                                                                "low",
+                                                                                "high"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                ],
+                                                                "type": "collection",
+                                                                "label": "Thinking Config"
+                                                            },
+                                                            {
+                                                                "name": "mediaResolution",
+                                                                "type": "select",
+                                                                "label": "Media Resolution",
+                                                                "validate": {
+                                                                    "enum": [
+                                                                        "media_resolution_low",
+                                                                        "media_resolution_medium",
+                                                                        "media_resolution_high"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "name": "imageConfig",
+                                                                "spec": [
+                                                                    {
+                                                                        "name": "imageSize",
+                                                                        "type": "select",
+                                                                        "label": "Image Size",
+                                                                        "validate": {
+                                                                            "enum": [
+                                                                                "1K",
+                                                                                "2K",
+                                                                                "4K"
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                ],
+                                                                "type": "collection",
+                                                                "label": "Image Configuration"
+                                                            },
+                                                            {
+                                                                "name": "responseMimeType",
+                                                                "type": "select",
+                                                                "label": "Response Format"
+                                                            },
+                                                            {
+                                                                "name": "responseSchema",
+                                                                "type": "any",
+                                                                "label": "Response Schema (Deprecated)"
+                                                            },
+                                                            {
+                                                                "name": "new_responseSchema",
+                                                                "spec": [
+                                                                    {
+                                                                        "name": "type",
+                                                                        "type": "select",
+                                                                        "label": "Value Type",
+                                                                        "options": [
+                                                                            {
+                                                                                "label": "String",
+                                                                                "value": "string",
+                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=string"
+                                                                            },
+                                                                            {
+                                                                                "label": "Enum",
+                                                                                "value": "enum",
+                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=enum"
+                                                                            },
+                                                                            {
+                                                                                "label": "Number",
+                                                                                "value": "number",
+                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=number"
+                                                                            },
+                                                                            {
+                                                                                "label": "Integer",
+                                                                                "value": "integer",
+                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=integer"
+                                                                            },
+                                                                            {
+                                                                                "label": "Boolean",
+                                                                                "value": "boolean",
+                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=boolean"
+                                                                            },
+                                                                            {
+                                                                                "label": "Object",
+                                                                                "value": "object",
+                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=object"
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                ],
+                                                                "type": "array",
+                                                                "label": "Response Schema"
+                                                            }
+                                                        ],
+                                                        "type": "collection",
+                                                        "label": "Generation configurations"
+                                                    },
+                                                    {
+                                                        "name": "tools",
+                                                        "type": "any",
+                                                        "label": "Tools"
+                                                    },
+                                                    {
+                                                        "name": "tool_config",
+                                                        "type": "any",
+                                                        "label": "Tool Config"
+                                                    },
+                                                    {
+                                                        "name": "function_declarations_context",
+                                                        "type": "boolean",
+                                                        "label": "Function Declarations Grounding"
+                                                    },
+                                                    {
+                                                        "name": "url_context",
+                                                        "type": "boolean",
+                                                        "label": "URL Context"
+                                                    },
+                                                    {
+                                                        "name": "google_search_context",
+                                                        "type": "boolean",
+                                                        "label": "Google Search Grounding"
+                                                    },
+                                                    {
+                                                        "name": "code_execution",
+                                                        "type": "boolean",
+                                                        "label": "Code Execution"
+                                                    },
+                                                    {
+                                                        "name": "google_maps_context",
+                                                        "type": "boolean",
+                                                        "label": "Google Maps Grounding"
+                                                    },
+                                                    {
+                                                        "name": "file_search_store_context",
+                                                        "type": "boolean",
+                                                        "label": "File Search Store Context"
+                                                    },
+                                                    {
+                                                        "name": "serviceTier",
+                                                        "type": "select",
+                                                        "label": "Inference Service Tier"
+                                                    }
+                                                ]
+                                            },
+                                            "onerror": [
+                                                {
+                                                    "id": 960,
+                                                    "module": "gateway:WebhookRespond",
+                                                    "version": 1,
+                                                    "parameters": {},
+                                                    "mapper": {
+                                                        "body": "{\"error\":\"Comprometer › compromisos a liberar (Gemini)\"}",
+                                                        "status": "500",
+                                                        "headers": [
+                                                            {
+                                                                "key": "Content-Type",
+                                                                "value": "application/json"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 2400,
+                                                            "y": 900
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "id": 1060,
+                                                    "module": "builtin:Commit",
+                                                    "version": 1,
+                                                    "parameters": {},
+                                                    "mapper": {},
+                                                    "metadata": {
+                                                        "designer": {
+                                                            "x": 2700,
+                                                            "y": 900
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "id": 61,
+                                            "module": "builtin:BasicRouter",
+                                            "version": 1,
+                                            "mapper": null,
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2400,
+                                                    "y": 450
+                                                }
+                                            },
+                                            "routes": [
+                                                {
+                                                    "flow": [
+                                                        {
+                                                            "id": 62,
+                                                            "module": "builtin:BasicFeeder",
+                                                            "version": 1,
+                                                            "parameters": {},
+                                                            "mapper": {
+                                                                "array": "{{60.result.lineas}}"
+                                                            },
+                                                            "metadata": {
+                                                                "designer": {
+                                                                    "x": 2700,
+                                                                    "y": 300
+                                                                }
+                                                            }
+                                                        },
+                                                        {
+                                                            "id": 63,
+                                                            "module": "datastore:DeleteRecord",
+                                                            "version": 1,
+                                                            "parameters": {
+                                                                "datastore": "__ALMACEN_COMPROMISOS__"
+                                                            },
+                                                            "filter": {
+                                                                "name": "La línea está en la lista",
+                                                                "conditions": [
+                                                                    [
+                                                                        {
+                                                                            "a": "{{50.text}}",
+                                                                            "b": "{{62.value}}",
+                                                                            "o": "text:contain"
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                            },
+                                                            "mapper": {
+                                                                "key": "{{trim(first(split(62.value; \"·\")))}}"
+                                                            },
+                                                            "metadata": {
+                                                                "designer": {
+                                                                    "x": 3000,
+                                                                    "y": 300
+                                                                },
+                                                                "restore": {
+                                                                    "parameters": {
+                                                                        "datastore": {
+                                                                            "label": "[Human_proxy] Compromisos"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "parameters": [
+                                                                    {
+                                                                        "name": "datastore",
+                                                                        "type": "datastore",
+                                                                        "label": "Data store",
+                                                                        "required": true
+                                                                    }
+                                                                ],
+                                                                "expect": [
+                                                                    {
+                                                                        "name": "key",
+                                                                        "type": "text",
+                                                                        "label": "Key",
+                                                                        "required": true
+                                                                    },
+                                                                    {
+                                                                        "name": "upsert",
+                                                                        "type": "boolean",
+                                                                        "label": "Insert missing record",
+                                                                        "required": true
+                                                                    },
+                                                                    {
+                                                                        "name": "overwriteArrays",
+                                                                        "type": "boolean",
+                                                                        "label": "Overwrite an existing array in the record",
+                                                                        "required": true
+                                                                    },
+                                                                    {
+                                                                        "name": "data",
+                                                                        "spec": [
+                                                                            {
+                                                                                "name": "agente",
+                                                                                "type": "text",
+                                                                                "label": "Agente"
+                                                                            },
+                                                                            {
+                                                                                "name": "comprometido_con",
+                                                                                "type": "text",
+                                                                                "label": "Comprometido con"
+                                                                            },
+                                                                            {
+                                                                                "name": "destinatario",
+                                                                                "type": "text",
+                                                                                "label": "Destinatario"
+                                                                            },
+                                                                            {
+                                                                                "name": "accion",
+                                                                                "type": "text",
+                                                                                "label": "Accion"
+                                                                            },
+                                                                            {
+                                                                                "name": "momento",
+                                                                                "type": "date",
+                                                                                "label": "Momento"
+                                                                            },
+                                                                            {
+                                                                                "name": "condicion",
+                                                                                "type": "text",
+                                                                                "label": "Condicion"
+                                                                            },
+                                                                            {
+                                                                                "name": "simbolos",
+                                                                                "type": "text",
+                                                                                "label": "Simbolos"
+                                                                            },
+                                                                            {
+                                                                                "name": "contenido",
+                                                                                "type": "text",
+                                                                                "label": "Contenido"
+                                                                            },
+                                                                            {
+                                                                                "name": "linea",
+                                                                                "type": "text",
+                                                                                "label": "Linea"
+                                                                            },
+                                                                            {
+                                                                                "name": "origen",
+                                                                                "type": "text",
+                                                                                "label": "Origen"
+                                                                            },
+                                                                            {
+                                                                                "name": "intentos",
+                                                                                "type": "number",
+                                                                                "label": "Intentos"
+                                                                            },
+                                                                            {
+                                                                                "name": "nivel",
+                                                                                "type": "number",
+                                                                                "label": "Nivel"
+                                                                            },
+                                                                            {
+                                                                                "name": "creado",
+                                                                                "type": "date",
+                                                                                "label": "Creado"
+                                                                            },
+                                                                            {
+                                                                                "name": "estado",
+                                                                                "type": "text",
+                                                                                "label": null
+                                                                            },
+                                                                            {
+                                                                                "name": "fin",
+                                                                                "type": "date",
+                                                                                "label": null
+                                                                            }
+                                                                        ],
+                                                                        "type": "collection",
+                                                                        "label": "Record"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "onerror": [
+                                                                {
+                                                                    "id": 963,
+                                                                    "module": "gateway:WebhookRespond",
+                                                                    "version": 1,
+                                                                    "parameters": {},
+                                                                    "mapper": {
+                                                                        "body": "{\"error\":\"Comprometer › liberación de compromisos (almacén Compromisos)\"}",
+                                                                        "status": "500",
+                                                                        "headers": [
+                                                                            {
+                                                                                "key": "Content-Type",
+                                                                                "value": "application/json"
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    "metadata": {
+                                                                        "designer": {
+                                                                            "x": 3300,
+                                                                            "y": 300
+                                                                        }
+                                                                    }
+                                                                },
+                                                                {
+                                                                    "id": 1063,
+                                                                    "module": "builtin:Commit",
+                                                                    "version": 1,
+                                                                    "parameters": {},
+                                                                    "mapper": {},
+                                                                    "metadata": {
+                                                                        "designer": {
+                                                                            "x": 3600,
+                                                                            "y": 300
+                                                                        }
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "flow": [
+                                                        {
+                                                            "id": 64,
+                                                            "module": "gateway:WebhookRespond",
+                                                            "version": 1,
+                                                            "parameters": {},
+                                                            "mapper": {
+                                                                "body": "{{if(length(60.result.lineas) > 0; \"LIBERADO. Borja queda libre de estos compromisos con este chat: \"; \"NADA. Borja no tenía ningún compromiso así con este chat.\")}}{{join(60.result.lineas; \" / \")}}",
+                                                                "status": "200",
+                                                                "headers": [
+                                                                    {
+                                                                        "key": "Content-Type",
+                                                                        "value": "text/plain; charset=utf-8"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "metadata": {
+                                                                "designer": {
+                                                                    "x": 2700,
+                                                                    "y": 600
+                                                                }
+                                                            },
+                                                            "onerror": [
+                                                                {
+                                                                    "id": 964,
+                                                                    "module": "builtin:Commit",
+                                                                    "version": 1,
+                                                                    "parameters": {},
+                                                                    "mapper": {},
+                                                                    "metadata": {
+                                                                        "designer": {
+                                                                            "x": 3000,
+                                                                            "y": 600
+                                                                        }
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 70,
+                                            "module": "builtin:BasicRouter",
+                                            "version": 1,
+                                            "filter": {
+                                                "name": "Es un compromiso nuevo",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{3.result.cm_acto}}",
+                                                            "b": "UNREQUEST",
+                                                            "o": "text:notequal"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": null,
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2100,
+                                                    "y": 1800
+                                                }
+                                            },
+                                            "routes": [
+                                                {
+                                                    "flow": [
+                                                        {
+                                                            "id": 71,
+                                                            "module": "gateway:WebhookRespond",
+                                                            "version": 1,
+                                                            "parameters": {},
+                                                            "filter": {
+                                                                "name": "Ya tiene 10 pendientes con este chat",
+                                                                "conditions": [
+                                                                    [
+                                                                        {
+                                                                            "a": "{{if(contains(split(\"abstenerse\"; \",\"); 3.result.cm_accion); \"no\"; if(get(remove(split(50.text; newline); \"\"); 10); \"si\"; \"no\"))}}",
+                                                                            "b": "si",
+                                                                            "o": "text:equal"
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                            },
+                                                            "mapper": {
+                                                                "body": "RECHAZADO. Borja no se compromete porque tiene demasiados compromisos pendientes.",
+                                                                "status": "200",
+                                                                "headers": [
+                                                                    {
+                                                                        "key": "Content-Type",
+                                                                        "value": "text/plain; charset=utf-8"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "metadata": {
+                                                                "designer": {
+                                                                    "x": 2400,
+                                                                    "y": 1200
+                                                                }
+                                                            },
+                                                            "onerror": [
+                                                                {
+                                                                    "id": 971,
+                                                                    "module": "builtin:Commit",
+                                                                    "version": 1,
+                                                                    "parameters": {},
+                                                                    "mapper": {},
+                                                                    "metadata": {
+                                                                        "designer": {
+                                                                            "x": 2700,
+                                                                            "y": 1200
+                                                                        }
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "flow": [
+                                                        {
+                                                            "id": 43,
+                                                            "module": "gemini-ai:createACompletionGeminiPro",
+                                                            "version": 1,
+                                                            "parameters": {
+                                                                "__IMTCONN__": "__CONEXION_GEMINI__"
+                                                            },
+                                                            "filter": {
+                                                                "name": "Hay sitio",
+                                                                "conditions": [
+                                                                    [
+                                                                        {
+                                                                            "a": "{{if(contains(split(\"abstenerse\"; \",\"); 3.result.cm_accion); \"no\"; if(get(remove(split(50.text; newline); \"\"); 10); \"si\"; \"no\"))}}",
+                                                                            "b": "no",
+                                                                            "o": "text:equal"
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                            },
+                                                            "mapper": {
+                                                                "model": "gemini-3.8-flash",
+                                                                "contents": [
+                                                                    {
+                                                                        "role": "user",
+                                                                        "parts": [
+                                                                            {
+                                                                                "text": "<context>\nCompromisos vigentes de {{1.agente}} con su interlocutor, uno por línea:\n<lista_vigentes>\n{{ifempty(join(remove(split(50.text; newline); ); newline); \"ninguno\")}}\n</lista_vigentes>\n\nNuevo compromiso recibido:\n- acción: {{3.result.cm_accion}}\n- contenido: {{3.result.cm_contenido}}\n- condición: {{3.result.cm_condicion}}\n- valores: {{3.result.cm_simbolos}}\n- cuándo: {{3.result.cm_cuando}}, hasta {{if(3.result.cm_fin; formatDate(3.result.cm_fin; \"DD/MM HH:mm\"; \"Europe/Madrid\"); \"sin fecha de fin\")}}\n</context>\n\n<instructions>\n¿Hay en <lista_vigentes> un compromiso que ya pide lo mismo que el nuevo, aunque esté dicho de otra forma? Es el mismo si coinciden la acción, a quién va dirigida, lo que hay que hacer y la condición o los valores de los que depende.\n</instructions>\n\n<output_format>\nduplicado: <si lo hay, copia aquí su línea tal como aparece en la lista. Solo puede haber uno. Si no lo hay, déjalo totalmente en blanco>\n</output_format>",
+                                                                                "type": "text"
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                ],
+                                                                "generationConfig": {
+                                                                    "imageConfig": {},
+                                                                    "responseSchema": "{\"type\":\"object\",\"properties\":{\"duplicado\":{\"type\":\"string\"}},\"required\":[\"duplicado\"]}",
+                                                                    "thinkingConfig": {},
+                                                                    "responseMimeType": "application/json"
+                                                                },
+                                                                "system_instruction": {
+                                                                    "parts": [
+                                                                        {
+                                                                            "text": "Comparas un compromiso nuevo de un agente con los compromisos que ya tiene. Juzgas por el significado, no por las palabras: dos compromisos son el mismo aunque estén redactados de forma distinta. Respondes solo con el JSON pedido."
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "metadata": {
+                                                                "designer": {
+                                                                    "x": 2400,
+                                                                    "y": 1950
+                                                                },
+                                                                "setupValidation": {
+                                                                    "result": {
+                                                                        "valid": true,
+                                                                        "fields": []
+                                                                    },
+                                                                    "version": 1,
+                                                                    "configuration": "883e31787e2a6ea7"
+                                                                },
+                                                                "restore": {
+                                                                    "expect": {
+                                                                        "model": {
+                                                                            "mode": "chose",
+                                                                            "label": "Gemini 3.8 Flash"
+                                                                        },
+                                                                        "contents": {
+                                                                            "mode": "chose",
+                                                                            "items": [
+                                                                                {
+                                                                                    "role": {
+                                                                                        "mode": "chose",
+                                                                                        "label": "User"
+                                                                                    },
+                                                                                    "parts": {
+                                                                                        "mode": "chose",
+                                                                                        "items": [
+                                                                                            {
+                                                                                                "type": {
+                                                                                                    "mode": "chose",
+                                                                                                    "label": "Text"
+                                                                                                }
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        },
+                                                                        "serviceTier": {
+                                                                            "mode": "chose",
+                                                                            "label": "Empty"
+                                                                        },
+                                                                        "url_context": {
+                                                                            "mode": "chose"
+                                                                        },
+                                                                        "code_execution": {
+                                                                            "mode": "chose"
+                                                                        },
+                                                                        "safetySettings": {
+                                                                            "mode": "chose"
+                                                                        },
+                                                                        "generationConfig": {
+                                                                            "nested": {
+                                                                                "imageConfig": {
+                                                                                    "nested": {
+                                                                                        "imageSize": {
+                                                                                            "mode": "chose",
+                                                                                            "label": "Empty"
+                                                                                        }
+                                                                                    }
+                                                                                },
+                                                                                "stopSequences": {
+                                                                                    "mode": "chose"
+                                                                                },
+                                                                                "thinkingConfig": {
+                                                                                    "nested": {
+                                                                                        "thinking_level": {
+                                                                                            "mode": "chose",
+                                                                                            "label": "Empty"
+                                                                                        },
+                                                                                        "include_thoughts": {
+                                                                                            "mode": "chose"
+                                                                                        }
+                                                                                    }
+                                                                                },
+                                                                                "mediaResolution": {
+                                                                                    "mode": "chose",
+                                                                                    "label": "Empty"
+                                                                                },
+                                                                                "responseMimeType": {
+                                                                                    "mode": "chose",
+                                                                                    "label": "JSON Output"
+                                                                                },
+                                                                                "new_responseSchema": {
+                                                                                    "mode": "chose"
+                                                                                },
+                                                                                "responseModalities": {
+                                                                                    "mode": "chose"
+                                                                                }
+                                                                            }
+                                                                        },
+                                                                        "system_instruction": {
+                                                                            "nested": {
+                                                                                "parts": {
+                                                                                    "mode": "chose",
+                                                                                    "items": [
+                                                                                        null
+                                                                                    ]
+                                                                                }
+                                                                            }
+                                                                        },
+                                                                        "google_maps_context": {
+                                                                            "mode": "chose"
+                                                                        },
+                                                                        "google_search_context": {
+                                                                            "mode": "chose"
+                                                                        },
+                                                                        "file_search_store_context": {
+                                                                            "mode": "chose"
+                                                                        },
+                                                                        "function_declarations_context": {
+                                                                            "mode": "chose"
+                                                                        }
+                                                                    },
+                                                                    "parameters": {
+                                                                        "__IMTCONN__": {
+                                                                            "data": {
+                                                                                "scoped": "true",
+                                                                                "connection": "gemini-ai-q9zyjp"
+                                                                            },
+                                                                            "label": "Gemini AI connection"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "parameters": [
+                                                                    {
+                                                                        "name": "__IMTCONN__",
+                                                                        "type": "account:gemini-ai-q9zyjp",
+                                                                        "label": "Connection",
+                                                                        "required": true
+                                                                    }
+                                                                ],
+                                                                "expect": [
+                                                                    {
+                                                                        "name": "model",
+                                                                        "type": "select",
+                                                                        "label": "AI Model",
+                                                                        "required": true
+                                                                    },
+                                                                    {
+                                                                        "name": "contents",
+                                                                        "spec": [
+                                                                            {
+                                                                                "name": "role",
+                                                                                "type": "select",
+                                                                                "label": "Role",
+                                                                                "options": [
+                                                                                    {
+                                                                                        "label": "User",
+                                                                                        "value": "user"
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Model",
+                                                                                        "value": "model"
+                                                                                    }
+                                                                                ],
+                                                                                "required": true
+                                                                            },
+                                                                            {
+                                                                                "name": "parts",
+                                                                                "spec": [
+                                                                                    {
+                                                                                        "name": "type",
+                                                                                        "type": "select",
+                                                                                        "label": "Message Type",
+                                                                                        "options": [
+                                                                                            {
+                                                                                                "label": "Text",
+                                                                                                "value": "text",
+                                                                                                "nested": [
+                                                                                                    {
+                                                                                                        "name": "text",
+                                                                                                        "type": "text",
+                                                                                                        "label": "Text",
+                                                                                                        "required": true
+                                                                                                    }
+                                                                                                ]
+                                                                                            },
+                                                                                            {
+                                                                                                "label": "File",
+                                                                                                "value": "file",
+                                                                                                "nested": [
+                                                                                                    {
+                                                                                                        "name": "file_data",
+                                                                                                        "spec": [
+                                                                                                            {
+                                                                                                                "name": "mime_type",
+                                                                                                                "type": "text",
+                                                                                                                "label": "Mime Type",
+                                                                                                                "required": true
+                                                                                                            },
+                                                                                                            {
+                                                                                                                "help": "You can use public or signed URLs as input by using the URLs.",
+                                                                                                                "name": "file_uri",
+                                                                                                                "type": "text",
+                                                                                                                "label": "File URI",
+                                                                                                                "required": true
+                                                                                                            }
+                                                                                                        ],
+                                                                                                        "type": "collection",
+                                                                                                        "label": "File Data",
+                                                                                                        "required": true
+                                                                                                    }
+                                                                                                ]
+                                                                                            },
+                                                                                            {
+                                                                                                "label": "Function Call",
+                                                                                                "value": "functionCall",
+                                                                                                "nested": [
+                                                                                                    {
+                                                                                                        "name": "functionCall",
+                                                                                                        "spec": [
+                                                                                                            {
+                                                                                                                "help": "The name of the function to call.",
+                                                                                                                "name": "name",
+                                                                                                                "type": "text",
+                                                                                                                "label": "Name",
+                                                                                                                "required": true,
+                                                                                                                "validate": {
+                                                                                                                    "max": 64
+                                                                                                                }
+                                                                                                            },
+                                                                                                            {
+                                                                                                                "help": "The function parameters and values in JSON object format.",
+                                                                                                                "name": "args",
+                                                                                                                "type": "json",
+                                                                                                                "label": "Arguments"
+                                                                                                            },
+                                                                                                            {
+                                                                                                                "help": "The unique ID of the function call.",
+                                                                                                                "name": "id",
+                                                                                                                "type": "text",
+                                                                                                                "label": "Function Call ID"
+                                                                                                            }
+                                                                                                        ],
+                                                                                                        "type": "collection",
+                                                                                                        "label": "Function Call"
+                                                                                                    }
+                                                                                                ]
+                                                                                            },
+                                                                                            {
+                                                                                                "label": "Function Response",
+                                                                                                "value": "functionResponse",
+                                                                                                "nested": [
+                                                                                                    {
+                                                                                                        "name": "functionResponse",
+                                                                                                        "spec": [
+                                                                                                            {
+                                                                                                                "help": "The name of the function to call.",
+                                                                                                                "name": "name",
+                                                                                                                "type": "text",
+                                                                                                                "label": "Name",
+                                                                                                                "required": true,
+                                                                                                                "validate": {
+                                                                                                                    "max": 64
+                                                                                                                }
+                                                                                                            },
+                                                                                                            {
+                                                                                                                "help": "The function response in JSON object format.",
+                                                                                                                "name": "response",
+                                                                                                                "type": "json",
+                                                                                                                "label": "Response",
+                                                                                                                "required": true
+                                                                                                            }
+                                                                                                        ],
+                                                                                                        "type": "collection",
+                                                                                                        "label": "Function Response"
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        ],
+                                                                                        "required": true
+                                                                                    },
+                                                                                    {
+                                                                                        "name": "thoughtSignature",
+                                                                                        "type": "text",
+                                                                                        "label": "Thought Signature"
+                                                                                    }
+                                                                                ],
+                                                                                "type": "array",
+                                                                                "label": "Parts",
+                                                                                "required": true
+                                                                            }
+                                                                        ],
+                                                                        "type": "array",
+                                                                        "label": "Messages",
+                                                                        "required": true
+                                                                    },
+                                                                    {
+                                                                        "name": "system_instruction",
+                                                                        "spec": [
+                                                                            {
+                                                                                "name": "parts",
+                                                                                "spec": {
+                                                                                    "name": "value",
+                                                                                    "spec": [
+                                                                                        {
+                                                                                            "name": "text",
+                                                                                            "type": "text",
+                                                                                            "label": "Value"
+                                                                                        }
+                                                                                    ],
+                                                                                    "type": "collection",
+                                                                                    "label": "Prompt"
+                                                                                },
+                                                                                "type": "array",
+                                                                                "label": "Prompts"
+                                                                            }
+                                                                        ],
+                                                                        "type": "collection",
+                                                                        "label": "System Instructions"
+                                                                    },
+                                                                    {
+                                                                        "name": "safetySettings",
+                                                                        "spec": [
+                                                                            {
+                                                                                "name": "category",
+                                                                                "type": "select",
+                                                                                "label": "Category",
+                                                                                "options": [
+                                                                                    {
+                                                                                        "label": "Harassment content",
+                                                                                        "value": "HARM_CATEGORY_HARASSMENT"
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Hate speech and content",
+                                                                                        "value": "HARM_CATEGORY_HATE_SPEECH"
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Sexually explicit content.",
+                                                                                        "value": "HARM_CATEGORY_SEXUALLY_EXPLICIT"
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Dangerous content:",
+                                                                                        "value": "HARM_CATEGORY_DANGEROUS_CONTENT"
+                                                                                    }
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "name": "threshold",
+                                                                                "type": "select",
+                                                                                "label": "Threshold",
+                                                                                "options": [
+                                                                                    {
+                                                                                        "label": "Block low and above.",
+                                                                                        "value": "BLOCK_LOW_AND_ABOVE"
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Block medium and above.",
+                                                                                        "value": "BLOCK_MEDIUM_AND_ABOVE"
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Block only high.",
+                                                                                        "value": "BLOCK_ONLY_HIGH"
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Block none.",
+                                                                                        "value": "BLOCK_NONE"
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        ],
+                                                                        "type": "array",
+                                                                        "label": "Safety Settings"
+                                                                    },
+                                                                    {
+                                                                        "name": "generationConfig",
+                                                                        "spec": [
+                                                                            {
+                                                                                "name": "stopSequences",
+                                                                                "spec": {
+                                                                                    "name": "value",
+                                                                                    "type": "text",
+                                                                                    "label": "Stop Sequence"
+                                                                                },
+                                                                                "type": "array",
+                                                                                "label": "Stop Sequences"
+                                                                            },
+                                                                            {
+                                                                                "name": "responseModalities",
+                                                                                "type": "select",
+                                                                                "label": "Response Modalities",
+                                                                                "multiple": true,
+                                                                                "validate": {
+                                                                                    "enum": [
+                                                                                        "text",
+                                                                                        "image"
+                                                                                    ]
+                                                                                }
+                                                                            },
+                                                                            {
+                                                                                "name": "maxOutputTokens",
+                                                                                "type": "number",
+                                                                                "label": "Max Output Tokens"
+                                                                            },
+                                                                            {
+                                                                                "name": "temperature",
+                                                                                "type": "number",
+                                                                                "label": "Temperature",
+                                                                                "validate": {
+                                                                                    "max": 1,
+                                                                                    "min": 0
+                                                                                }
+                                                                            },
+                                                                            {
+                                                                                "name": "topP",
+                                                                                "type": "number",
+                                                                                "label": "Top P",
+                                                                                "validate": {
+                                                                                    "max": 1,
+                                                                                    "min": 0
+                                                                                }
+                                                                            },
+                                                                            {
+                                                                                "name": "topK",
+                                                                                "type": "number",
+                                                                                "label": "Top K"
+                                                                            },
+                                                                            {
+                                                                                "name": "thinkingConfig",
+                                                                                "spec": [
+                                                                                    {
+                                                                                        "name": "thinkingBudget",
+                                                                                        "type": "number",
+                                                                                        "label": "Thinking Budget"
+                                                                                    },
+                                                                                    {
+                                                                                        "name": "include_thoughts",
+                                                                                        "type": "boolean",
+                                                                                        "label": "Include Thoughts"
+                                                                                    },
+                                                                                    {
+                                                                                        "name": "thinking_level",
+                                                                                        "type": "select",
+                                                                                        "label": "Thinking Level",
+                                                                                        "validate": {
+                                                                                            "enum": [
+                                                                                                "low",
+                                                                                                "high"
+                                                                                            ]
+                                                                                        }
+                                                                                    }
+                                                                                ],
+                                                                                "type": "collection",
+                                                                                "label": "Thinking Config"
+                                                                            },
+                                                                            {
+                                                                                "name": "mediaResolution",
+                                                                                "type": "select",
+                                                                                "label": "Media Resolution",
+                                                                                "validate": {
+                                                                                    "enum": [
+                                                                                        "media_resolution_low",
+                                                                                        "media_resolution_medium",
+                                                                                        "media_resolution_high"
+                                                                                    ]
+                                                                                }
+                                                                            },
+                                                                            {
+                                                                                "name": "imageConfig",
+                                                                                "spec": [
+                                                                                    {
+                                                                                        "name": "imageSize",
+                                                                                        "type": "select",
+                                                                                        "label": "Image Size",
+                                                                                        "validate": {
+                                                                                            "enum": [
+                                                                                                "1K",
+                                                                                                "2K",
+                                                                                                "4K"
+                                                                                            ]
+                                                                                        }
+                                                                                    }
+                                                                                ],
+                                                                                "type": "collection",
+                                                                                "label": "Image Configuration"
+                                                                            },
+                                                                            {
+                                                                                "name": "responseMimeType",
+                                                                                "type": "select",
+                                                                                "label": "Response Format"
+                                                                            },
+                                                                            {
+                                                                                "name": "responseSchema",
+                                                                                "type": "any",
+                                                                                "label": "Response Schema (Deprecated)"
+                                                                            },
+                                                                            {
+                                                                                "name": "new_responseSchema",
+                                                                                "spec": [
+                                                                                    {
+                                                                                        "name": "type",
+                                                                                        "type": "select",
+                                                                                        "label": "Value Type",
+                                                                                        "options": [
+                                                                                            {
+                                                                                                "label": "String",
+                                                                                                "value": "string",
+                                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=string"
+                                                                                            },
+                                                                                            {
+                                                                                                "label": "Enum",
+                                                                                                "value": "enum",
+                                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=enum"
+                                                                                            },
+                                                                                            {
+                                                                                                "label": "Number",
+                                                                                                "value": "number",
+                                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=number"
+                                                                                            },
+                                                                                            {
+                                                                                                "label": "Integer",
+                                                                                                "value": "integer",
+                                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=integer"
+                                                                                            },
+                                                                                            {
+                                                                                                "label": "Boolean",
+                                                                                                "value": "boolean",
+                                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=boolean"
+                                                                                            },
+                                                                                            {
+                                                                                                "label": "Object",
+                                                                                                "value": "object",
+                                                                                                "nested": "rpc://gemini-ai/1/createResponseSchema?type=object"
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                                ],
+                                                                                "type": "array",
+                                                                                "label": "Response Schema"
+                                                                            }
+                                                                        ],
+                                                                        "type": "collection",
+                                                                        "label": "Generation configurations"
+                                                                    },
+                                                                    {
+                                                                        "name": "tools",
+                                                                        "type": "any",
+                                                                        "label": "Tools"
+                                                                    },
+                                                                    {
+                                                                        "name": "tool_config",
+                                                                        "type": "any",
+                                                                        "label": "Tool Config"
+                                                                    },
+                                                                    {
+                                                                        "name": "function_declarations_context",
+                                                                        "type": "boolean",
+                                                                        "label": "Function Declarations Grounding"
+                                                                    },
+                                                                    {
+                                                                        "name": "url_context",
+                                                                        "type": "boolean",
+                                                                        "label": "URL Context"
+                                                                    },
+                                                                    {
+                                                                        "name": "google_search_context",
+                                                                        "type": "boolean",
+                                                                        "label": "Google Search Grounding"
+                                                                    },
+                                                                    {
+                                                                        "name": "code_execution",
+                                                                        "type": "boolean",
+                                                                        "label": "Code Execution"
+                                                                    },
+                                                                    {
+                                                                        "name": "google_maps_context",
+                                                                        "type": "boolean",
+                                                                        "label": "Google Maps Grounding"
+                                                                    },
+                                                                    {
+                                                                        "name": "file_search_store_context",
+                                                                        "type": "boolean",
+                                                                        "label": "File Search Store Context"
+                                                                    },
+                                                                    {
+                                                                        "name": "serviceTier",
+                                                                        "type": "select",
+                                                                        "label": "Inference Service Tier"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "onerror": [
+                                                                {
+                                                                    "id": 943,
+                                                                    "module": "gateway:WebhookRespond",
+                                                                    "version": 1,
+                                                                    "parameters": {},
+                                                                    "mapper": {
+                                                                        "body": "{\"error\":\"Comprometer › comprobación de duplicados (Gemini)\"}",
+                                                                        "status": "500",
+                                                                        "headers": [
+                                                                            {
+                                                                                "key": "Content-Type",
+                                                                                "value": "application/json"
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    "metadata": {
+                                                                        "designer": {
+                                                                            "x": 2700,
+                                                                            "y": 2400
+                                                                        }
+                                                                    }
+                                                                },
+                                                                {
+                                                                    "id": 1043,
+                                                                    "module": "builtin:Commit",
+                                                                    "version": 1,
+                                                                    "parameters": {},
+                                                                    "mapper": {},
+                                                                    "metadata": {
+                                                                        "designer": {
+                                                                            "x": 3000,
+                                                                            "y": 2400
+                                                                        }
+                                                                    }
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "id": 32,
+                                                            "module": "builtin:BasicRouter",
+                                                            "version": 1,
+                                                            "mapper": null,
+                                                            "metadata": {
+                                                                "designer": {
+                                                                    "x": 2700,
+                                                                    "y": 1800
+                                                                }
+                                                            },
+                                                            "routes": [
+                                                                {
+                                                                    "flow": [
+                                                                        {
+                                                                            "id": 33,
+                                                                            "module": "datastore:AddRecord",
+                                                                            "version": 1,
+                                                                            "parameters": {
+                                                                                "datastore": "__ALMACEN_COMPROMISOS__"
+                                                                            },
+                                                                            "filter": {
+                                                                                "name": "No está duplicado",
+                                                                                "conditions": [
+                                                                                    [
+                                                                                        {
+                                                                                            "a": "{{if(43.result.duplicado; \"si\"; \"no\")}}",
+                                                                                            "b": "no",
+                                                                                            "o": "text:equal"
+                                                                                        }
+                                                                                    ]
+                                                                                ]
+                                                                            },
+                                                                            "mapper": {
+                                                                                "key": "",
+                                                                                "data": {
+                                                                                    "fin": "{{3.result.cm_fin}}",
+                                                                                    "chat": "{{3.result.cm_chat}}",
+                                                                                    "linea": "{{3.result.cm_linea}}",
+                                                                                    "nivel": "{{3.result.cm_nivel_txt}}",
+                                                                                    "accion": "{{3.result.cm_accion}}",
+                                                                                    "agente": "{{1.agente}}",
+                                                                                    "creado": "{{now}}",
+                                                                                    "estado": "pendiente",
+                                                                                    "origen": "{{ifempty(1.origen; lower(3.result.cm_acto))}}",
+                                                                                    "momento": "{{3.result.cm_momento}}",
+                                                                                    "intentos": "0",
+                                                                                    "simbolos": "{{3.result.cm_simbolos}}",
+                                                                                    "condicion": "{{3.result.cm_condicion}}",
+                                                                                    "contenido": "{{3.result.cm_contenido}}",
+                                                                                    "destinatario": "{{3.result.cm_dest}}",
+                                                                                    "comprometido_con": "{{3.result.cm_con}}"
+                                                                                },
+                                                                                "overwrite": false
+                                                                            },
+                                                                            "metadata": {
+                                                                                "designer": {
+                                                                                    "x": 3000,
+                                                                                    "y": 1650
+                                                                                }
+                                                                            },
+                                                                            "onerror": [
+                                                                                {
+                                                                                    "id": 933,
+                                                                                    "module": "gateway:WebhookRespond",
+                                                                                    "version": 1,
+                                                                                    "parameters": {},
+                                                                                    "mapper": {
+                                                                                        "body": "{\"error\":\"Comprometer › alta del compromiso (almacén Compromisos)\"}",
+                                                                                        "status": "500",
+                                                                                        "headers": [
+                                                                                            {
+                                                                                                "key": "Content-Type",
+                                                                                                "value": "application/json"
+                                                                                            }
+                                                                                        ]
+                                                                                    },
+                                                                                    "metadata": {
+                                                                                        "designer": {
+                                                                                            "x": 3300,
+                                                                                            "y": 1800
+                                                                                        }
+                                                                                    }
+                                                                                },
+                                                                                {
+                                                                                    "id": 1033,
+                                                                                    "module": "builtin:Commit",
+                                                                                    "version": 1,
+                                                                                    "parameters": {},
+                                                                                    "mapper": {},
+                                                                                    "metadata": {
+                                                                                        "designer": {
+                                                                                            "x": 3600,
+                                                                                            "y": 1800
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        },
+                                                                        {
+                                                                            "id": 34,
+                                                                            "module": "gateway:WebhookRespond",
+                                                                            "version": 1,
+                                                                            "parameters": {},
+                                                                            "mapper": {
+                                                                                "body": "{{if(contains(split(\"abstenerse\"; \",\"); 3.result.cm_accion); \"ACEPTADO. Borja se compromete a no hacerlo: \"; \"ACEPTADO. Borja se ha comprometido: \")}}{{3.result.cm_linea}}.{{if(contains(split(\"abstenerse\"; \",\"); 3.result.cm_accion); \"\"; if(3.result.cm_condicion; \" Vigilará la condición desde el \"; \" Lo hará el \"))}}{{if(contains(split(\"abstenerse\"; \",\"); 3.result.cm_accion); \"\"; 3.result.cm_cuando)}}{{if(contains(split(\"abstenerse\"; \",\"); 3.result.cm_accion); \"\"; if(contains(split(3.result.cm_aplazado; \",\"); \"si\"); \", el primer momento en que trabaja, porque lo pedido cae fuera de su horario (laborables de 8:00 a 20:30)\"; \"\"))}}{{if(contains(split(\"abstenerse\"; \",\"); 3.result.cm_accion); \"\"; if(3.result.cm_condicion; \" y lo hará en cuanto se cumpla.\"; \".\"))}}{{if(3.result.cm_fin; \" Vale hasta el \"; \"\")}}{{if(3.result.cm_fin; formatDate(3.result.cm_fin; \"DD/MM\"; \"Europe/Madrid\"); \"\")}}{{if(3.result.cm_fin; \".\"; \"\")}}",
+                                                                                "status": "200",
+                                                                                "headers": [
+                                                                                    {
+                                                                                        "key": "Content-Type",
+                                                                                        "value": "text/plain; charset=utf-8"
+                                                                                    }
+                                                                                ]
+                                                                            },
+                                                                            "metadata": {
+                                                                                "designer": {
+                                                                                    "x": 3300,
+                                                                                    "y": 1500
+                                                                                }
+                                                                            },
+                                                                            "onerror": [
+                                                                                {
+                                                                                    "id": 934,
+                                                                                    "module": "builtin:Commit",
+                                                                                    "version": 1,
+                                                                                    "parameters": {},
+                                                                                    "mapper": {},
+                                                                                    "metadata": {
+                                                                                        "designer": {
+                                                                                            "x": 3600,
+                                                                                            "y": 1500
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "flow": [
+                                                                        {
+                                                                            "id": 35,
+                                                                            "module": "gateway:WebhookRespond",
+                                                                            "version": 1,
+                                                                            "parameters": {},
+                                                                            "filter": {
+                                                                                "name": "Está duplicado",
+                                                                                "conditions": [
+                                                                                    [
+                                                                                        {
+                                                                                            "a": "{{if(43.result.duplicado; \"si\"; \"no\")}}",
+                                                                                            "b": "si",
+                                                                                            "o": "text:equal"
+                                                                                        }
+                                                                                    ]
+                                                                                ]
+                                                                            },
+                                                                            "mapper": {
+                                                                                "body": "RECHAZADO. Borja no se compromete porque ya lo tenía apuntado.",
+                                                                                "status": "200",
+                                                                                "headers": [
+                                                                                    {
+                                                                                        "key": "Content-Type",
+                                                                                        "value": "text/plain; charset=utf-8"
+                                                                                    }
+                                                                                ]
+                                                                            },
+                                                                            "metadata": {
+                                                                                "designer": {
+                                                                                    "x": 3000,
+                                                                                    "y": 2100
+                                                                                }
+                                                                            },
+                                                                            "onerror": [
+                                                                                {
+                                                                                    "id": 935,
+                                                                                    "module": "builtin:Commit",
+                                                                                    "version": 1,
+                                                                                    "parameters": {},
+                                                                                    "mapper": {},
+                                                                                    "metadata": {
+                                                                                        "designer": {
+                                                                                            "x": 3300,
+                                                                                            "y": 2100
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": [
+            {
+                "moduleIds": [
+                    1
+                ],
+                "content": "<p><strong>Reglas de compromiso (Shoham)</strong></p><p>Recibe un acto: REQUEST (lo que pide el usuario, desde Clasificar, a través del Loop), UNREQUEST (el usuario libera a Borja) o DECISION (Borja se compromete consigo mismo, desde Reflexionar o desde el Despertador). Campos: agente, chat_id, acto, accion, dia, hora, fin, condicion, simbolos, contenido, origen y nivel. Responde siempre con la decisión en texto.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    60
+                ],
+                "content": "<p><strong>Liberar</strong></p><p>Gemini decide por el significado qué compromisos de este chat anula lo que pide el usuario, y se borran del almacén: un compromiso liberado ya no importa al sistema.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            },
+            {
+                "moduleIds": [
+                    33
+                ],
+                "content": "<p><strong>Alta</strong></p><p>Solo si no está repetida. Lo demás se comprueba al recibir el compromiso, en el módulo 31, antes de buscar nada.</p>",
+                "isFilterNote": false,
+                "metadata": {
+                    "color": "#9138FE"
+                }
+            }
+        ]
+    }
+}

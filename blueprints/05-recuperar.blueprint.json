@@ -1,0 +1,885 @@
+{
+    "name": "[Human_proxy]:[02-Memoria] (05/20) | Recuperar",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": "__HOOK_RECUPERAR__",
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 0
+                },
+                "setupValidation": {
+                    "result": {
+                        "valid": true,
+                        "fields": []
+                    },
+                    "version": 1,
+                    "configuration": "871f01b980efeb83"
+                },
+                "restore": {
+                    "parameters": {
+                        "hook": {
+                            "data": {
+                                "editable": "true"
+                            },
+                            "label": "[Human_proxy] Memoria: Recuperar"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "hook",
+                        "type": "hook:gateway-webhook",
+                        "label": "Webhook",
+                        "required": true
+                    },
+                    {
+                        "name": "maxResults",
+                        "type": "number",
+                        "label": "Maximum number of results"
+                    }
+                ],
+                "interface": [
+                    {
+                        "name": "agente",
+                        "type": "text"
+                    },
+                    {
+                        "name": "chat_id",
+                        "type": "text"
+                    },
+                    {
+                        "name": "consulta",
+                        "type": "text"
+                    },
+                    {
+                        "name": "consultas",
+                        "spec": {
+                            "type": "text"
+                        },
+                        "type": "array"
+                    },
+                    {
+                        "name": "k",
+                        "type": "number"
+                    },
+                    {
+                        "name": "n",
+                        "type": "number"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 9,
+            "module": "builtin:BasicFeeder",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "array": "{{ifempty(1.consultas; add(emptyarray; 1.consulta))}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "id": 2,
+            "module": "gemini-ai:generateEmbeddings",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": "__CONEXION_GEMINI__"
+            },
+            "mapper": {
+                "model": "gemini-embedding-2",
+                "content": {
+                    "parts": [
+                        {
+                            "text": "{{9.value}}",
+                            "type": "text"
+                        }
+                    ]
+                },
+                "output_dimensionality": "768"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 0
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "gemini-ai-q9zyjp"
+                            },
+                            "label": "Gemini AI connection"
+                        }
+                    }
+                }
+            },
+            "onerror": [
+                {
+                    "id": 901,
+                    "module": "gateway:WebhookRespond",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {
+                        "body": "{\"error\": \"Recuperar › embedding de la consulta (Gemini)\"}",
+                        "status": "500",
+                        "headers": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "metadata": {
+                        "designer": {
+                            "x": 600,
+                            "y": 300
+                        }
+                    }
+                },
+                {
+                    "id": 902,
+                    "module": "builtin:Commit",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {},
+                    "metadata": {
+                        "designer": {
+                            "x": 600,
+                            "y": 600
+                        },
+                        "restore": {}
+                    }
+                }
+            ]
+        },
+        {
+            "id": 10,
+            "module": "util:TextAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 9,
+                "rowSeparator": "\n"
+            },
+            "mapper": {
+                "value": "[{{2.embedding.values}}]"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 0
+                },
+                "restore": {
+                    "extra": {
+                        "feeder": {
+                            "label": "Iterator [9]"
+                        }
+                    },
+                    "parameters": {
+                        "rowSeparator": {
+                            "label": "New row"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "id": 3,
+            "module": "airtable:ActionSearchRecords",
+            "version": 3,
+            "parameters": {
+                "__IMTCONN__": "__CONEXION_AIRTABLE__"
+            },
+            "mapper": {
+                "base": "__BASE_AIRTABLE__",
+                "sort": [
+                    {
+                        "field": "Creado",
+                        "direction": "desc"
+                    }
+                ],
+                "table": "__TABLA_MEMORY_STREAM__",
+                "fields": [
+                    "Memoria",
+                    "Tipo",
+                    "Importancia",
+                    "Ultimo_acceso",
+                    "Embedding",
+                    "Creado",
+                    "Chat_ID",
+                    "Autor"
+                ],
+                "formula": "AND({Agente}=\"{{1.agente}}\", OR({Chat_ID}=\"{{1.chat_id}}\", {Chat_ID}=\"GLOBAL\"))",
+                "maxRecords": "300",
+                "useColumnId": false,
+                "formulaField": "formula"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 0
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "airtable2"
+                            },
+                            "label": "My Airtable OAuth connection"
+                        }
+                    }
+                }
+            },
+            "onerror": [
+                {
+                    "id": 903,
+                    "module": "gateway:WebhookRespond",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {
+                        "body": "{\"error\": \"Recuperar › lectura de la memoria (Airtable)\"}",
+                        "status": "500",
+                        "headers": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "metadata": {
+                        "designer": {
+                            "x": 1200,
+                            "y": 300
+                        }
+                    }
+                },
+                {
+                    "id": 904,
+                    "module": "builtin:Commit",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {},
+                    "metadata": {
+                        "designer": {
+                            "x": 1200,
+                            "y": 600
+                        },
+                        "restore": {}
+                    }
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "module": "util:TextAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 3,
+                "rowSeparator": "\n"
+            },
+            "mapper": {
+                "value": "{\"id\": \"{{3.id}}\", \"tipo\": \"{{3.Tipo}}\", \"chat\": \"{{escapeJSON(3.Chat_ID)}}\", \"autor\": \"{{escapeJSON(3.Autor)}}\", \"imp\": {{ifempty(3.Importancia; 0)}}, \"acc\": \"{{ifempty(3.Ultimo_acceso; 3.Creado)}}\", \"creado\": \"{{3.Creado}}\", \"emb\": \"{{escapeJSON(3.Embedding)}}\", \"txt\": \"{{escapeJSON(3.Memoria)}}\"}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1500,
+                    "y": 0
+                },
+                "restore": {
+                    "parameters": {
+                        "rowSeparator": {
+                            "label": "New row"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "id": 15,
+            "module": "airtable:ActionSearchRecords",
+            "version": 3,
+            "parameters": {
+                "__IMTCONN__": "__CONEXION_AIRTABLE__"
+            },
+            "mapper": {
+                "base": "__BASE_AIRTABLE__",
+                "sort": [
+                    {
+                        "field": "Creado",
+                        "direction": "desc"
+                    }
+                ],
+                "table": "__TABLA_MEMORY_STREAM__",
+                "fields": [
+                    "Memoria",
+                    "Tipo",
+                    "Importancia",
+                    "Ultimo_acceso",
+                    "Embedding",
+                    "Creado",
+                    "Chat_ID",
+                    "Autor"
+                ],
+                "formula": "AND({Agente}=\"{{1.agente}}\", OR({Chat_ID}=\"{{1.chat_id}}\", {Chat_ID}=\"GLOBAL\"), OR({Tipo}=\"reflexion\", {Importancia}>=6))",
+                "maxRecords": "1000",
+                "useColumnId": false,
+                "formulaField": "formula"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1800,
+                    "y": 0
+                },
+                "restore": {
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "airtable2"
+                            },
+                            "label": "My Airtable OAuth connection"
+                        }
+                    }
+                }
+            },
+            "onerror": [
+                {
+                    "id": 915,
+                    "module": "gateway:WebhookRespond",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {
+                        "body": "{\"error\": \"Recuperar › lectura de reflexiones e importantes (Airtable)\"}",
+                        "status": "500",
+                        "headers": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "metadata": {
+                        "designer": {
+                            "x": 1800,
+                            "y": 300
+                        }
+                    }
+                },
+                {
+                    "id": 916,
+                    "module": "builtin:Commit",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {},
+                    "metadata": {
+                        "designer": {
+                            "x": 1800,
+                            "y": 600
+                        },
+                        "restore": {}
+                    }
+                }
+            ]
+        },
+        {
+            "id": 16,
+            "module": "util:TextAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 15,
+                "rowSeparator": "\n"
+            },
+            "mapper": {
+                "value": "{\"id\": \"{{15.id}}\", \"tipo\": \"{{15.Tipo}}\", \"chat\": \"{{escapeJSON(15.Chat_ID)}}\", \"autor\": \"{{escapeJSON(15.Autor)}}\", \"imp\": {{ifempty(15.Importancia; 0)}}, \"acc\": \"{{ifempty(15.Ultimo_acceso; 15.Creado)}}\", \"creado\": \"{{15.Creado}}\", \"emb\": \"{{escapeJSON(15.Embedding)}}\", \"txt\": \"{{escapeJSON(15.Memoria)}}\"}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2100,
+                    "y": 0
+                },
+                "restore": {
+                    "parameters": {
+                        "rowSeparator": {
+                            "label": "New row"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "id": 12,
+            "module": "datastore:GetRecord",
+            "version": 1,
+            "parameters": {
+                "datastore": "__ALMACEN_CACHE__"
+            },
+            "mapper": {
+                "key": "ventana|{{1.agente}}|{{1.chat_id}}",
+                "returnWrapped": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2400,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 911,
+                    "module": "gateway:WebhookRespond",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {
+                        "body": "{\"error\": \"Recuperar › lectura de la ventana (almacén Caché)\"}",
+                        "status": "500",
+                        "headers": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "metadata": {
+                        "designer": {
+                            "x": 2400,
+                            "y": 300
+                        }
+                    }
+                },
+                {
+                    "id": 912,
+                    "module": "builtin:Commit",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {},
+                    "metadata": {
+                        "designer": {
+                            "x": 2400,
+                            "y": 600
+                        },
+                        "restore": {}
+                    }
+                }
+            ]
+        },
+        {
+            "id": 5,
+            "module": "code:ExecuteCode",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "input": [
+                    {
+                        "name": "consulta_emb",
+                        "value": "{{10.text}}"
+                    },
+                    {
+                        "name": "registros",
+                        "value": "{{4.text}}\n{{16.text}}"
+                    },
+                    {
+                        "name": "k",
+                        "value": "{{ifempty(1.k; 10)}}"
+                    },
+                    {
+                        "name": "ahora",
+                        "value": "{{now}}"
+                    },
+                    {
+                        "name": "n",
+                        "value": "{{ifempty(1.n; 0)}}"
+                    },
+                    {
+                        "name": "chat",
+                        "value": "{{1.chat_id}}"
+                    },
+                    {
+                        "name": "ventana",
+                        "value": "{{12.ventana}}"
+                    },
+                    {
+                        "name": "usuario",
+                        "value": "{{1.usuario}}"
+                    },
+                    {
+                        "name": "agente",
+                        "value": "{{1.agente}}"
+                    },
+                    {
+                        "name": "consulta",
+                        "value": "{{1.consulta}}"
+                    }
+                ],
+                "language": "javascript",
+                "inputFormat": "editor",
+                "dependencies": [],
+                "codeEditorJavascript": "// [Human_proxy] Recuperación de memorias (Park et al., 2023, §4.1)\n// score = recencia + importancia + relevancia (alfa = 1), cada componente normalizado min-max a [0,1]\n// recencia: decaimiento exponencial 0.995 por hora desde el último acceso\n// relevancia: similitud coseno entre el embedding de la consulta y el de cada memoria\nconst { consulta_emb, registros, k, ahora, n, chat, ventana, usuario, agente, consulta } = input;\n\n// Los vectores llegan como texto; se extraen los números con regex (Make no siempre los serializa como JSON válido)\nconst vec = t => (String(t || '').match(/-?\\d+(?:\\.\\d+)?(?:e[-+]?\\d+)?/gi) || []).map(Number);\n// Una línea por consulta, cada una con su vector\nconst qs = String(consulta_emb || '').split('\\n').map(vec).filter(v => v.length);\nif (!qs.length) qs.push([]);\nconst lineas = String(registros || '').split('\\n').map(l => l.trim()).filter(Boolean);\nconst recs = [];\n// Dos lecturas (últimos 300 y reflexiones o importantes): un recuerdo puede venir en las dos, se cuenta una vez\nconst vistos = new Set();\nfor (const l of lineas) { try { const o = JSON.parse(l); if (o && o.id && !vistos.has(o.id)) { vistos.add(o.id); recs.push(o); } } catch (e) { /* línea corrupta: se ignora */ } }\nconst kk = parseInt(k, 10); const K = isNaN(kk) ? 10 : Math.max(0, kk);\nconst nn = parseInt(n, 10); const N = isNaN(nn) ? 0 : Math.max(0, nn);\nconst now = ahora ? new Date(ahora) : new Date();\n\nconst coseno = (a, b) => {\n  if (!Array.isArray(a) || !Array.isArray(b) || !a.length || a.length !== b.length) return 0;\n  let p = 0, na = 0, nb = 0;\n  for (let i = 0; i < a.length; i++) { p += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }\n  return na && nb ? p / (Math.sqrt(na) * Math.sqrt(nb)) : 0;\n};\n\nconst base = recs.map(r => {\n  const horas = Math.max(0, (now - new Date(r.acc)) / 3.6e6);\n  return {\n    id: r.id, memoria: r.txt, tipo: r.tipo, creado: r.creado,\n    importancia: Number(r.imp) || 0,\n    recencia: isFinite(horas) ? Math.pow(0.995, horas) : 0,\n    emb: vec(r.emb),\n  };\n});\n\nconst minmax = v => { const min = Math.min(...v), max = Math.max(...v); return x => max > min ? (x - min) / (max - min) : 0; };\nconst nRec = minmax(base.map(f => f.recencia));\nconst nImp = minmax(base.map(f => f.importancia));\n\n// Ranking de una consulta: recencia e importancia son comunes; la relevancia depende del vector de la consulta\nconst rank = q => {\n  const rel = base.map(f => coseno(q, f.emb));\n  const nRel = minmax(rel);\n  const filas = base.map((f, i) => ({ f, rec: nRec(f.recencia), imp: nImp(f.importancia), rel: nRel(rel[i]) }));\n  filas.forEach(x => { x.score = x.rec + x.imp + x.rel; });\n  filas.sort((a, b) => b.score - a.score);\n  const top = filas.slice(0, K).map(x => ({\n    id: x.f.id, memoria: x.f.memoria, tipo: x.f.tipo, creado: x.f.creado,\n    score: +x.score.toFixed(4), recencia: +x.rec.toFixed(4),\n    importancia: +x.imp.toFixed(4), relevancia: +x.rel.toFixed(4),\n  }));\n  return {\n    memorias: top,\n    texto: top.map((m, i) => `${i + 1}. ${m.memoria}`).join('\\n'),\n    texto_ids: top.map(m => `(${m.id}) ${m.memoria}`).join('\\n'),\n  };\n};\nconst resultados = qs.map(rank);\nconst { memorias: top, texto, texto_ids } = resultados[0];\n\n// Mensajes anteriores: los N últimos de la ventana del chat (caché), del más antiguo al más reciente\nconst VENTANA = 6;\nlet previa = [];\ntry { const v = JSON.parse(String(ventana || '[]')); if (Array.isArray(v)) previa = v.map(String); } catch (e) { /* ventana corrupta: se empieza de cero */ }\nconst mensajes = N ? previa.slice(-Math.min(N, VENTANA)).join('\\n') : '';\n// Solo en la llamada de conversación (n > 0) se añade el mensaje actual a la ventana\nconst entrada = `${usuario || 'Usuario'} le dijo a ${agente || 'el agente'}: «${consulta || ''}»`;\nconst ventana_nueva = JSON.stringify(N ? [...previa, entrada].slice(-VENTANA) : previa.slice(-VENTANA));\n\n// Último acceso (Park): los recuperados se marcan en lotes de 10, el máximo de Airtable por llamada\nconst validos = [...new Set(resultados.flatMap(r => r.memorias.map(m => m.id)))].filter(id => /^rec[A-Za-z0-9]{14}$/.test(id));\nconst sello = isNaN(now.getTime()) ? new Date().toISOString() : now.toISOString();\nconst lote = l => JSON.stringify({ records: l.map(id => ({ id, fields: { \"__CAMPO_Ultimo_acceso__\": sello } })) });\nconst lotes = [];\nfor (let i = 0; i < validos.length; i += 10) lotes.push(lote(validos.slice(i, i + 10)));\n\nreturn {\n  ids: top.map(m => m.id),\n  lotes,\n  ventana_nueva,\n  texto,\n  texto_ids,\n  mensajes,\n  total_evaluadas: base.length,\n  respuesta: JSON.stringify({ memorias: top, texto, texto_ids, mensajes, total_evaluadas: base.length, resultados }),\n};"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 2700,
+                    "y": 0
+                }
+            },
+            "onerror": [
+                {
+                    "id": 905,
+                    "module": "gateway:WebhookRespond",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {
+                        "body": "{\"error\": \"Recuperar › cálculo de relevancia (código)\"}",
+                        "status": "500",
+                        "headers": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "metadata": {
+                        "designer": {
+                            "x": 2700,
+                            "y": 300
+                        }
+                    }
+                },
+                {
+                    "id": 906,
+                    "module": "builtin:Commit",
+                    "version": 1,
+                    "parameters": {},
+                    "mapper": {},
+                    "metadata": {
+                        "designer": {
+                            "x": 2700,
+                            "y": 600
+                        },
+                        "restore": {}
+                    }
+                }
+            ]
+        },
+        {
+            "id": 13,
+            "module": "builtin:BasicRouter",
+            "version": 1,
+            "mapper": null,
+            "metadata": {
+                "designer": {
+                    "x": 3000,
+                    "y": 0
+                }
+            },
+            "routes": [
+                {
+                    "flow": [
+                        {
+                            "id": 14,
+                            "module": "datastore:AddRecord",
+                            "version": 1,
+                            "parameters": {
+                                "datastore": "__ALMACEN_CACHE__"
+                            },
+                            "filter": {
+                                "name": "Llamada de conversación (n > 0)",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{ifempty(1.n; 0)}}",
+                                            "b": "0",
+                                            "o": "number:greater"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "key": "ventana|{{1.agente}}|{{1.chat_id}}",
+                                "data": {
+                                    "agente": "{{1.agente}}",
+                                    "chat_id": "{{1.chat_id}}",
+                                    "ventana": "{{5.result.ventana_nueva}}"
+                                },
+                                "overwrite": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3300,
+                                    "y": -300
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 913,
+                                    "module": "gateway:WebhookRespond",
+                                    "version": 1,
+                                    "parameters": {},
+                                    "mapper": {
+                                        "body": "{\"error\": \"Recuperar › guardado de la ventana (almacén Caché)\"}",
+                                        "status": "500",
+                                        "headers": [
+                                            {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                            }
+                                        ]
+                                    },
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 3600,
+                                            "y": -300
+                                        }
+                                    }
+                                },
+                                {
+                                    "id": 914,
+                                    "module": "builtin:Commit",
+                                    "version": 1,
+                                    "parameters": {},
+                                    "mapper": {},
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 3900,
+                                            "y": -300
+                                        },
+                                        "restore": {}
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 6,
+                            "module": "gateway:WebhookRespond",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "body": "{{5.result.respuesta}}",
+                                "status": "200",
+                                "headers": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ]
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3300,
+                                    "y": 300
+                                }
+                            },
+                            "onerror": [
+                                {
+                                    "id": 909,
+                                    "module": "builtin:Commit",
+                                    "version": 1,
+                                    "parameters": {},
+                                    "mapper": {},
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 3300,
+                                            "y": 600
+                                        },
+                                        "restore": {}
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "id": 11,
+                            "module": "builtin:BasicFeeder",
+                            "version": 1,
+                            "parameters": {},
+                            "mapper": {
+                                "array": "{{5.result.lotes}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3600,
+                                    "y": 300
+                                }
+                            }
+                        },
+                        {
+                            "id": 7,
+                            "module": "airtable:makeApiCall",
+                            "version": 3,
+                            "parameters": {
+                                "__IMTCONN__": "__CONEXION_AIRTABLE__"
+                            },
+                            "mapper": {
+                                "url": "/v0/__BASE_AIRTABLE__/__TABLA_MEMORY_STREAM__",
+                                "body": "{{11.value}}",
+                                "method": "PATCH",
+                                "headers": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ]
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 3900,
+                                    "y": 300
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "qs": {
+                                            "mode": "chose"
+                                        },
+                                        "method": {
+                                            "mode": "chose",
+                                            "label": "PATCH"
+                                        },
+                                        "headers": {
+                                            "mode": "chose",
+                                            "items": [
+                                                null
+                                            ]
+                                        }
+                                    },
+                                    "parameters": {
+                                        "__IMTCONN__": {
+                                            "data": {
+                                                "scoped": "true",
+                                                "connection": "airtable2"
+                                            },
+                                            "label": "My Airtable OAuth connection"
+                                        }
+                                    }
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "__IMTCONN__",
+                                        "type": "account:airtable3,airtable2",
+                                        "label": "Connection",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "name": "url",
+                                        "type": "text",
+                                        "label": "URL",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "method",
+                                        "type": "select",
+                                        "label": "Method",
+                                        "required": true,
+                                        "validate": {
+                                            "enum": [
+                                                "GET",
+                                                "POST",
+                                                "PUT",
+                                                "PATCH",
+                                                "DELETE"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "headers",
+                                        "spec": [
+                                            {
+                                                "name": "key",
+                                                "type": "text",
+                                                "label": "Key"
+                                            },
+                                            {
+                                                "name": "value",
+                                                "type": "text",
+                                                "label": "Value"
+                                            }
+                                        ],
+                                        "type": "array",
+                                        "label": "Headers"
+                                    },
+                                    {
+                                        "name": "qs",
+                                        "spec": [
+                                            {
+                                                "name": "key",
+                                                "type": "text",
+                                                "label": "Key"
+                                            },
+                                            {
+                                                "name": "value",
+                                                "type": "text",
+                                                "label": "Value"
+                                            }
+                                        ],
+                                        "type": "array",
+                                        "label": "Query string"
+                                    },
+                                    {
+                                        "name": "body",
+                                        "type": "any",
+                                        "label": "Body"
+                                    }
+                                ]
+                            },
+                            "onerror": [
+                                {
+                                    "id": 907,
+                                    "module": "builtin:Commit",
+                                    "version": 1,
+                                    "parameters": {},
+                                    "mapper": {},
+                                    "metadata": {
+                                        "designer": {
+                                            "x": 3900,
+                                            "y": 600
+                                        },
+                                        "restore": {}
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": []
+    }
+}
