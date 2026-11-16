@@ -122,30 +122,6 @@ Cada compromiso admite como mucho 5 pasos y 2 correcciones. Los mensajes solo va
 | Evaluador: juzga el resultado | (16) Observar |
 | Autorreflexión: convierte el fallo en una instrucción para el intento siguiente | (17) Refinar |
 
-## Escenarios
-
-| Archivo | Escenario | Disparo |
-| --- | --- | --- |
-| `blueprints/01_gateway_telegram.blueprint.json` | (1) Gateway | Mensaje en Telegram |
-| `blueprints/02_memoria_escribir.blueprint.json` | (2) Escribir | Webhook |
-| `blueprints/03_memoria_reflexionar.blueprint.json` | (3) Reflexionar | Webhook |
-| `blueprints/04_memoria_recuperar.blueprint.json` | (4) Recuperar | Webhook |
-| `blueprints/06_responder.blueprint.json` | (6) Responder | Webhook |
-| `blueprints/07_resumen_agente.blueprint.json` | (7) Resumen del agente | Webhook |
-| `blueprints/08_estudiar.blueprint.json` | (8) Estudiar | Webhook |
-| `blueprints/09_interpelar.blueprint.json` | (9) Interpelar | Webhook |
-| `blueprints/10_despertador.blueprint.json` | (10) Despertador | Diario, 5:00 |
-| `blueprints/11_cumplir.blueprint.json` | (11) Cumplir | Cada 30 minutos, laborables de 8:00 a 20:30 |
-| `blueprints/12_noticias.blueprint.json` | (12) Noticias | Laborables, 8:00 y 16:00 |
-| `blueprints/13_cotizar.blueprint.json` | (13) Cotizar | Webhook |
-| `blueprints/14_comprometer.blueprint.json` | (14) Comprometer | Webhook |
-| `blueprints/15_actuar.blueprint.json` | (15) Actuar | Webhook |
-| `blueprints/16_observar.blueprint.json` | (16) Observar | Webhook |
-| `blueprints/17_refinar.blueprint.json` | (17) Refinar | Webhook |
-| `blueprints/18_enviar.blueprint.json` | (18) Enviar | Webhook |
-
-Cada blueprint lleva notas de Make en sus webhooks y en sus llamadas, con el origen y el destino de cada una.
-
 ## Requisitos
 
 - Una cuenta de Make.com con plan de pago, porque la calculadora usa Make Code. Con un usuario, el sistema gasta unos 3.400–3.900 créditos al mes antes de conversar (sección 21 de la documentación).
