@@ -127,187 +127,32 @@ Un escenario con disparador instantáneo se desactiva en cuanto tiene un error n
 
 ## 4. Telegram
 
-Escenario `[Human_proxy]:[01-Gateway] (01/17) | Telegram`. Se dispara con cada mensaje que llega al bot y procesa los mensajes en orden: no atiende el siguiente hasta que ha terminado con el anterior.
-
-1. **Entrada.** Solo continúan los mensajes de texto que no son comandos.
-2. **Usuario identificado.** Si el remitente no es el usuario autorizado, responde que no es un usuario autenticado y le indica el repositorio del proyecto.
-3. **Límite de frecuencia.** Cuenta en Airtable las observaciones del usuario en ese chat de los últimos 10 minutos.
-   - **Menos de 10:** llama al Loop con `{"agente": "Borja", "chat_id", "usuario", "mensaje"}`.
-   - **10 o más:** responde «Descansamos un poco. Intentalo en un par de minutos» y no llama al Loop.
-4. **Respuesta.** La llamada al Loop no trata como error los códigos distintos de 2xx, así que lee igual una respuesta normal (200) que un aviso (500). Envía al usuario el campo `respuesta`. Si llega vacío, envía «Perdona, no puedo atenderte: el Loop ha respondido sin texto…».
-
-**Avisos propios de Telegram:**
-
-| Situación | Mensaje |
-| --- | --- |
-| El Loop no responde o rechaza la conexión | «Perdona, no puedo atenderte: no he podido comunicarme con el Loop (no responde o rechaza la conexión). Escríbeme de nuevo en un momento.» |
-| Falla el recuento de mensajes recientes | «Perdona, no puedo atenderte: ha fallado el control de mensajes recientes (Telegram › Airtable). Escríbeme de nuevo en un momento.» |
-
-Si falla un envío por Telegram, el manejador hace Commit: no hay otro canal para avisar.
 
 ---
 
 ## 5. Loop del bot
 
-Escenario `[Human_proxy]:[00-Core] | Loop del bot`. Disparo instantáneo por webhook. Su flujo es lineal:
-
-### 5.1. Módulos
-
-1. **Webhook.** Recibe `agente`, `chat_id`, `usuario` y `mensaje`.
-2. **Perfil (960).** Lee del almacén el registro `perfil|<agente>`, con la descripción del agente.
-3. **Resumen (61).** Llama a Resumen con `{"agente", "chat_id", "modo": "ON"}`. Resumen decide si devuelve la caché o la regenera.
-4. **Recuperar (2).** Llama a Recuperar con `{"agente", "chat_id", "usuario", "consulta": <mensaje>, "k": 5, "n": 6}`. Recibe los 5 recuerdos más útiles y los mensajes de la ventana, y Recuperar apunta el mensaje en ella.
-5. **Actuar (70).** Le envía:
-   - `descripcion`: la del perfil (o el nombre del agente si no hay perfil), más «Limita la respuesta a una o dos frases, sin pasar de 20 palabras»;
-   - `resumen`: el que devolvió Resumen;
-   - `recuerdos`: el texto numerado de Recuperar;
-   - `mensajes`: la ventana;
-   - `agente`, `chat_id`, `usuario` y `mensaje`.
-6. **Router (66):**
-   - **Si Actuar no devolvió respuesta:** responde con un 500 y el aviso correspondiente.
-   - **Si la hay:**
-     - **Escribir (4)** guarda «<usuario> le dijo a <agente>: «<mensaje>»», como observación de autor usuario;
-     - **Escribir (30)** guarda «<agente> le respondió a <usuario>: «<respuesta>»», como observación de autor agente;
-     - **Respuesta (20):** 200 `{"respuesta": "…"}`.
-
-### 5.2. Por qué se guarda antes de responder
-
-Si la memoria no se puede guardar, Borja no responde como si nada: avisa de que no ha podido guardar. Así la memoria siempre recoge lo que el usuario ha visto.
-
-### 5.3. Avisos de Borja
-
-| Falla | Mensaje |
-| --- | --- |
-| Lectura del perfil | «Perdona, no puedo atenderte: ha fallado la lectura de mi perfil (Loop › almacén Caché). Escríbeme de nuevo en un momento.» |
-| Resumen | «… ha fallado el resumen de nuestra conversación (escenario Resumen) …» |
-| Recuperar | «… ha fallado la recuperación de mis recuerdos (escenario Recuperar) …» |
-| Actuar | «… ha fallado la redacción de mi respuesta (escenario Actuar) …» |
-| Actuar sin texto | «… la redacción de mi respuesta ha llegado vacía (escenario Actuar) …» |
-| Guardado del mensaje | «Perdona, no he podido guardar lo que me has dicho (escenario Escribir). Repítemelo en un momento.» |
-| Guardado de la respuesta | «Perdona, no he podido guardar mi respuesta (escenario Escribir). Repíteme lo que me decías en un momento.» |
-
-Todos salen con código 500 y después Commit. El aviso nombra el escenario que llamó el Loop; el detalle del paso que falló dentro de ese escenario está en su respuesta 500, visible en el historial de Make.
 
 ---
 
 ## 6. Actuar: redacción de la respuesta
 
-Escenario `[Human_proxy]:[Ejecución] (15/17) | Actuar`. Atiende al Loop en una ruta propia, con el filtro «Llamada del Loop»: el campo `mensaje` existe y el campo `clave` no. Sus demás rutas pertenecen a la ejecución y no se describen aquí.
-
-1. **Gemini (81).**
-   - **Instrucción de sistema:** la descripción del agente; después, «Lo que <agente> ha llegado a saber de sí mismo y de su interlocutor (si está vacío, ignóralo): <resumen>»; y por último las reglas de personaje: es el agente, habla por Telegram, se mantiene en su papel, no inventa recuerdos ni precios ni cotizaciones.
-   - **Contenido:** los recuerdos, los mensajes anteriores (del más antiguo al más reciente) y el mensaje actual.
-2. **Respuesta (82):** 200 `{"respuesta": "<texto de Gemini sin espacios sobrantes>"}`.
-
-Si Gemini falla: 500 `{"error": "Actuar › redacción de la respuesta (Gemini)"}` y Commit.
 
 ---
 
 ## 7. Escribir
 
-Escenario `[Human_proxy]:[02-Memoria] (02/17) | Escribir`. Es la única puerta de entrada a la memoria.
-
-1. **Webhook.** Recibe `agente`, `chat_id`, `memoria`, `tipo`, `autor` y, en las reflexiones, `evidencias`.
-2. **Importancia (Gemini, con esquema JSON).** Puntúa del 1 al 10 la trascendencia económica del recuerdo para el agente o para su interlocutor:
-
-   > En una escala del 1 al 10, donde 1 es económicamente irrelevante (p. ej., un saludo o una charla trivial) y 10 es de máxima trascendencia económica (p. ej., una operación de gran volumen, una pérdida o ganancia importante, un movimiento brusco del mercado), puntúa la importancia económica del siguiente recuerdo de <agente>, para él o para su interlocutor.
-
-   La respuesta está forzada a `{"importancia": <entero>}`.
-3. **Embedding.** Gemini Embedding 2, con 768 dimensiones.
-4. **Airtable.** Crea el registro con todos los campos y el último acceso a la hora actual.
-5. **Respuesta.** 200 con el identificador, la importancia y el tipo.
-
-**Errores:** puntuación, embedding y guardado tienen cada uno su manejador, con 500 y su origen («Escribir › puntuación de importancia (Gemini)», «Escribir › embedding del recuerdo (Gemini)» y «Escribir › guardado del recuerdo (Airtable)»), y Commit.
 
 ---
 
 ## 8. Recuperar
 
-Escenario `[Human_proxy]:[02-Memoria] (04/17) | Recuperar`. Sirve a dos clases de llamadas:
-
-- **El Loop:** una consulta (el mensaje del usuario), con `k` = 5 y `n` = 6. Recibe el contexto de la pregunta: los recuerdos más útiles y los mensajes anteriores.
-- **Resumen y Reflexionar:** una o varias consultas fijas o generadas, sin `n`. Reciben solo recuerdos.
-
-### 8.1. Módulos
-
-1. **Webhook.** Recibe `agente`, `chat_id`, `consulta` o `consultas`, `k` (10 por defecto), `n` (0 por defecto) y `usuario`.
-2. **Iterator (9).** Convierte la entrada en una lista de frases: `consultas` si llega, o una lista con `consulta`. Emite un bundle por frase.
-3. **Embedding (2).** Un vector de 768 números por frase.
-4. **Agregador (10).** Une los vectores, uno por línea.
-5. **Primera lectura (3).** Los 300 recuerdos más recientes del agente en ese chat y en GLOBAL.
-6. **Agregador (4).** Convierte cada registro en una línea JSON con id, tipo, chat, autor, importancia, último acceso, creación, vector y texto.
-7. **Segunda lectura (15).** Del mismo agente y chats, todas las reflexiones y todos los recuerdos con importancia 6 o más, de cualquier fecha, hasta 1.000.
-8. **Agregador (16).** Lo mismo que el 4, con la segunda lectura.
-9. **Ventana (12).** Lee del almacén el registro `ventana|<agente>|<chat>`.
-10. **Código (5).** El cálculo; ver 8.2.
-11. **Router (13):**
-    - **Ruta 1, solo si `n` > 0:** guarda en el almacén la ventana nueva (14).
-    - **Ruta 2:** responde con el resultado (6) y marca el último acceso de los recuerdos devueltos (11 y 7), en lotes de 10 por llamada a la API de Airtable.
-
-### 8.2. El cálculo
-
-Para cada recuerdo, sin repetir los que llegan por las dos lecturas:
-
-- **Recencia:** 0,995 elevado a las horas transcurridas desde su último acceso, o desde su creación si nunca se ha recuperado.
-- **Importancia:** la de Escribir.
-- **Relevancia:** similitud del coseno entre su vector y el de la frase de consulta.
-
-Las tres se reescalan de 0 a 1 entre todos los recuerdos evaluados y se suman, de 0 a 3. Para cada frase se devuelven los `k` recuerdos con mayor puntuación. Este es el criterio de recuperación de Park.
-
-**La ventana.** Si `n` > 0:
-- devuelve en `mensajes` los últimos `n` mensajes de la ventana, hasta 6, sin el actual;
-- la ventana nueva añade al final «<usuario> le dijo a <agente>: «<consulta>»» y conserva los 6 últimos.
-
-Si `n` = 0, no devuelve mensajes ni toca la ventana.
-
-**El último acceso.** Reúne los identificadores de todos los recuerdos devueltos y prepara lotes de 10 para marcarles la hora actual.
-
-### 8.3. Respuesta
-
-```json
-{"memorias": [{"id", "memoria", "tipo", "creado", "score", "recencia", "importancia", "relevancia"}, …],
- "texto": "1. …\n2. …",
- "texto_ids": "(rec…) …\n(rec…) …",
- "mensajes": "…\n…",
- "total_evaluadas": 277,
- "resultados": [{"memorias", "texto", "texto_ids"}, …]}
-```
-
-`memorias`, `texto` y `texto_ids` corresponden a la primera frase; `resultados` lleva una entrada por frase, en el mismo orden.
-
-**Errores (500 y Commit):**
-- embedding de la consulta;
-- lectura de la memoria;
-- lectura de reflexiones e importantes;
-- lectura de la ventana;
-- cálculo de relevancia;
-- guardado de la ventana.
-
-Si fallan la propia respuesta o el marcado del último acceso, que van después de responder, el manejador solo hace Commit.
 
 ---
 
 ## 9. Resumen del agente
 
-Escenario `[Human_proxy]:[02-Memoria] (05/17) | Resumen del agente`. Es el único responsable de la caché del resumen. El Loop lo llama en cada mensaje.
-
-1. **Webhook.** Recibe `agente`, `chat_id` y `modo`.
-2. **Router por modo.**
-   - **Modo distinto de ON:** responde 200 `{"resumen": "", "estado": "OFF"}`.
-   - **Modo ON:** lee del almacén la caché `<agente>|<chat>`.
-3. **Router por caché:**
-   - **Caché de menos de 7 días:** responde 200 `{"resumen": <caché>, "estado": "cache"}`.
-   - **Sin caché o con 7 días o más:** regenera:
-     1. Llama a Recuperar con cuatro consultas y `k` = 15: rasgos esenciales de la personalidad del agente, su ocupación diaria actual, cómo se siente respecto a su progreso reciente, y lo que sabe de su interlocutor y la relación que mantiene con él.
-     2. Pide a Gemini los cuatro apartados de una vez, con esquema JSON (`rasgos`, `ocupacion`, `progreso`, `interlocutor`). Cada apartado, en una o dos frases, en tercera persona, solo con sus propias afirmaciones, o «sin datos» si no hay suficientes.
-     3. Compone el texto: «Resumen de <agente> según su memoria de esta conversación (actualizado a las HH:mm del DD/MM/AAAA):» y las cuatro líneas.
-     4. Responde 200 `{"resumen": …, "estado": "regenerado"}`.
-     5. Guarda la caché, si al menos un apartado tiene datos.
-
-**Errores:**
-- Responden con 500 y su origen, y hacen Commit: la lectura de la caché, la llamada a Recuperar, Gemini y la composición del texto.
-- El guardado de la caché, que va después de responder, solo hace Commit.
-
+ 
 ---
 
 ## 10. Reflexionar
