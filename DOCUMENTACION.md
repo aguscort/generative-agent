@@ -157,46 +157,6 @@ Un escenario con disparador instantáneo se desactiva en cuanto tiene un error n
 
 ## 10. Reflexionar
 
-Escenario `[Human_proxy]:[02-Memoria] (03/17) | Reflexionar`. Reflexiona sobre una conversación (`agente` + `chat_id`) y responde al terminar. Su objetivo es que el agente actúe mejor: en lugar de describir a los sujetos de sus recuerdos, revisa su actuación y saca lecciones aplicables, con prioridad a lo económico.
-
-### 10.1. Módulos
-
-1. **Webhook.** Recibe `agente` y `chat_id`.
-2. **Recuerdos recientes (4 y 6).** Los 100 más recientes de esa conversación, numerados y con su identificador.
-3. **Preguntas (7, Gemini):**
-
-   > <agente> quiere ser más eficaz con su interlocutor y en lo económico. Basándote únicamente en la información anterior, formula las 3 preguntas más útiles para revisar su actuación reciente: qué hizo que no dio resultado o se puede hacer mejor, qué oportunidades económicas dejó pasar y qué necesitaba su interlocutor que no recibió.
-
-4. **Por cada pregunta (15, 16 y 17).** Llama a Recuperar con la pregunta y `k` = 10, sin ventana, y acumula un bloque con la pregunta y sus recuerdos identificados.
-5. **Lecciones (8, Gemini, con esquema JSON):**
-
-   > ¿Qué 5 lecciones puede sacar <agente> para actuar mejor a partir de ahora? Cada lección debe ser una regla concreta y aplicable, con la forma «Cuando [situación], [qué hacer]», justificada por las afirmaciones y sin inventar nada que no se deduzca de ellas. Da prioridad a las que tengan más trascendencia económica para él o para su interlocutor.
-
-   Cada lección lleva sus evidencias. El mismo prompt pide, además, si alguna lección exige una acción concreta del agente, con su día, hora, condición, símbolos y contenido.
-6. **Interpretación (9).** Convierte la respuesta en `insights` y `accion`.
-7. **Router final (30)**, cuyas rutas se procesan en este orden:
-   1. Guarda cada lección como reflexión a través de Escribir, con autor sistema, y anota sus evidencias.
-   2. Si la acción es necesaria y tiene contenido, la reenvía a Comprometer como decisión (acto DECISION).
-   3. Marca como reflejadas las observaciones pendientes de esa conversación.
-   4. Responde 200 `{"estado": "reflexion completada", "agente": …, "reflexiones": N}`.
-
-### 10.2. Errores
-
-Responden con 500 y su origen, y hacen Commit:
-- la lectura de recuerdos recientes;
-- las preguntas;
-- la recuperación;
-- las lecciones;
-- la interpretación;
-- el guardado de cada lección y de sus evidencias;
-- el reenvío a Comprometer;
-- la búsqueda y el marcado de observaciones reflejadas.
-
-Como la respuesta va al final, un 200 significa que todo se ha completado. Las observaciones solo se marcan como reflejadas después de guardar las lecciones: si algo falla antes, se vuelven a tener en cuenta en la siguiente reflexión.
-
-### 10.3. Disparo
-
-El Despertador (`[Human_proxy]:[03-Planning] (08/17) | Despertador`) se ejecuta cada día a las 5:00. Primero apunta la agenda de los días laborables. Después busca los chats del agente con observaciones sin reflejar y llama a Reflexionar una vez por chat, de uno en uno. El Despertador no tiene manejadores de error: si una llamada falla, la ejecución se detiene y el fallo queda en el historial de Make.
 
 ---
 
