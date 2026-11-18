@@ -15,7 +15,7 @@ La memoria vive en Airtable, los compromisos en un almacén de datos de Make y e
 > [!NOTE]
 > La documentación técnica, con cada escenario, sus prompts y sus costes, está en [DOCUMENTACION.md](DOCUMENTACION.md).
 
-## Qué hace
+## 1. Qué hace
 
 | | Qué hace Borja |
 | --- | --- |
@@ -40,7 +40,7 @@ flowchart LR
     E --> T([Mensaje de Borja])
 ```
 
-## Memoria
+## 2. Memoria
 
 **Para qué sirve.** Para que Borja se comporte de forma coherente con lo que ha vivido: que no te pregunte dos veces lo mismo, que recuerde tu cartera y que su opinión sobre ti cambie con el tiempo.
 
@@ -59,7 +59,7 @@ flowchart LR
 
 **Referencia.** Park, J. S., O'Brien, J. C., Cai, C. J., Morris, M. R., Liang, P. y Bernstein, M. S. (2023). *Generative Agents: Interactive Simulacra of Human Behavior*. UIST '23. [arXiv:2304.03442](https://arxiv.org/abs/2304.03442). Apartados 4.1 (memoria y recuperación) y 4.2 (reflexión).
 
-## Planificación
+## 3. Planificación
 
 **Para qué sirve.** Para que Borja decida qué va a hacer y cuándo, y para que solo prometa lo que sabe hacer.
 
@@ -95,7 +95,7 @@ Comprometer también ajusta el momento al horario de Borja (laborables de 8:00 a
 
 **Referencia.** Shoham, Y. (1993). *Agent-oriented programming*. Artificial Intelligence, 60(1), 51–92. [doi:10.1016/0004-3702(93)90034-9](https://doi.org/10.1016/0004-3702(93)90034-9). De ahí salen el estado mental del agente (creencias, capacidades y compromisos), las reglas de compromiso, los actos de pedir (REQUEST) y liberar (UNREQUEST), la abstención (REFRAIN) y el ciclo del intérprete AGENT-0.
 
-## Ejecución
+## 4. Ejecución
 
 **Para qué sirve.** Para que Borja cumpla lo que ha prometido y compruebe que lo ha logrado antes de darlo por hecho.
 
@@ -122,7 +122,7 @@ Cada compromiso admite como mucho 5 pasos y 2 correcciones. Los mensajes solo va
 | Evaluador: juzga el resultado | (16) Observar |
 | Autorreflexión: convierte el fallo en una instrucción para el intento siguiente | (17) Refinar |
 
-## Requisitos
+## 5. Requisitos
 
 - Una cuenta de Make.com con plan de pago, porque la calculadora usa Make Code. Con un usuario, el sistema gasta unos 3.400–3.900 créditos al mes antes de conversar (sección 21 de la documentación).
 - Una base de Airtable, una clave de la API de Gemini y un bot de Telegram.
@@ -133,7 +133,7 @@ Las cotizaciones y la prensa no necesitan clave.
 > [!WARNING]
 > Si Make se queda sin créditos, todos los escenarios se paran hasta que se renuevan o se compran más. Lo que se escriba al bot mientras tanto queda en cola y se procesa después.
 
-## Instalación
+## 6. Instalación
 
 1. Crea en Airtable la tabla Memory Stream con los campos de la sección 3.
 2. Crea en Make tres almacenes de datos:
@@ -162,7 +162,7 @@ Las cotizaciones y la prensa no necesitan clave.
 | `<SLACK_CHANNEL_ID>` | El canal de Slack, si lo usas |
 | `<USUARIO_TELEGRAM_ID>` | Tu ID numérico de Telegram, en los dos filtros del Gateway que separan al usuario identificado del resto |
 
-## Seguridad
+## 7. Seguridad
 
 > [!CAUTION]
 > No publiques las URLs de los webhooks ni el token. Si se expone alguno, regenera el webhook o cambia el token en todos los escenarios a la vez.
@@ -170,3 +170,79 @@ Las cotizaciones y la prensa no necesitan clave.
 - **Token.** Cada llamada entre escenarios lleva el token, y cada escenario con webhook lo comprueba antes de hacer nada. El Gateway, Cumplir y Noticias lo leen del perfil del agente; los demás reenvían el que reciben. Un webhook bloqueado por el token responde igualmente 200, así que el error no se ve desde fuera: se ve en el historial del escenario.
 - **Datos.** Airtable guarda literalmente lo que cada usuario dice al bot; Cartera, sus inversiones; Compromisos, lo que el agente le ha prometido. Si el bot lo usan otras personas, deben saberlo.
 - **Código.** La ruta de cálculo ejecuta el código que escribe el modelo, en el entorno aislado de Make y tras un filtro de patrones. Si el bot va a hablar con desconocidos, lee la sección 22 de la documentación.
+
+## 8. Borja frente al estado del arte
+
+Esta sección sitúa Human_proxy, área por área, frente a las técnicas recientes de la investigación sobre agentes. No es una hoja de ruta aprobada, sino un mapa de lo que separa al proyecto de esas técnicas y de lo que costaría acercarse a cada una.
+
+| Área | Qué hace Borja | Qué propone la investigación | Distancia |
+| --- | --- | --- | --- |
+| [Personalidad](#personalidad) | Un resumen en prosa que se regenera a partir de la memoria | Un núcleo estable de atributos y la medición de la coherencia con jueces | Media: falta un núcleo fijo y no se mide la deriva |
+| [Memoria](#memoria-1) | Registro único de recuerdos, reflexión por umbral y olvido por regla fija | Memoria jerárquica, olvido según el uso, habilidades reutilizables y grafos | Media: la base es la misma; faltan el olvido según el uso y la reutilización de lo que ha funcionado |
+| [Planificación](#planificación-1) | Plan explícito antes de actuar, evaluación de cada paso y replanificación | Exploración de varias alternativas y planificadores formales | Baja en lo útil para este dominio |
+| [Herramientas](#herramientas) | Escenarios de Make y módulos propios; el cálculo con código | Código como acción universal y protocolo MCP | Media: Make ya ofrece un servidor MCP |
+| [Orquestación](#orquestación) | 20 escenarios de Make que se invocan entre sí como funciones | Marcos en código con ejecución duradera y varios agentes | Alta, y no siempre conviene recorrerla |
+| [Evaluación](#evaluación) | Pruebas manuales | Baterías de evaluación automáticas | Alta |
+
+### Personalidad
+
+Borja no tiene una descripción fija del personaje. Como en Generative Agents, su identidad es un resumen que se reconstruye a partir de la memoria. El escenario Resumen del agente recupera los recuerdos sobre sus rasgos, su ocupación, su progreso y su interlocutor, y Gemini redacta cada uno de esos apartados en una o dos frases. El resultado se guarda en la Caché por agente y chat, y entra como instrucción de sistema en las llamadas en las que Gemini habla como Borja. Su carácter sale, por tanto, de la memoria y cambia con ella. Si no hay recuerdos sobre un apartado, ese apartado queda en «sin datos».
+
+Sobre la coherencia de la personalidad hay tres líneas de trabajo, y ninguna dice exactamente lo que se le suele atribuir.
+
+| Hallazgo | Alcance |
+| --- | --- |
+| **Deriva de la persona.** Un modelo deja de seguir la personalidad de su *system prompt* en unas ocho rondas de diálogo. Los autores lo atribuyen, como hipótesis, a que la atención al *system prompt* decae a medida que crece la conversación (Li *et al.*, 2024). | Afecta a conversaciones largas dentro de una misma llamada. Proponen dos remedios: *split-softmax*, que actúa sobre la atención del modelo y no se puede usar con Gemini desde Make, y la repetición del *system prompt*. |
+| **Personas descriptivas y tabulares.** Cuanto más texto genera el LLM al crear perfiles sintéticos, más sesgada sale la población simulada (Li *et al.*, 2025). | El artículo trata de simular poblaciones para encuestas y elecciones, no de mantener el carácter de un agente. Los perfiles tabulares quedan entre los perfiles sin texto generado y los descriptivos, y el artículo no recomienda ninguno. |
+| **Jueces de personalidad.** Otro modelo infiere los rasgos de los cinco grandes factores (Big Five u OCEAN) a partir de lo que dice el agente, con entrevistas psicológicas (InCharacter) o con debates entre agentes (*Can LLM Agents Maintain a Persona in Discourse?*). | Son métodos de evaluación posterior, no controles en tiempo real. Su fiabilidad varía por rasgo: en la extraversión, por ejemplo, los jueces coinciden poco. |
+
+Lo que tendría sentido aquí es separar lo que Borja es de lo que Borja sabe. Una ficha breve y estructurada, que no se regenerara nunca, recogería su papel, su tono, sus límites y sus niveles OCEAN, y entraría junto al resumen dinámico en cada llamada en la que Gemini habla como Borja. Así la memoria podría cambiar lo que sabe y opina, pero no quién es. Para comprobar que lo consigue bastaría un juez diario. Despertador llamaría a un escenario que puntuara los mensajes de Borja del día frente a los rasgos de la ficha y que, si encontrara una desviación, escribiera una observación que Reflexionar pudiera usar. Hacerlo en tiempo real duplicaría las llamadas a Gemini por mensaje, y la fiabilidad actual de estos jueces no lo justifica.
+
+### Memoria
+
+Todos los recuerdos de Borja están en un único registro en Airtable, el *memory stream* de Generative Agents. Cada recuerdo se puntúa por recencia, importancia y relevancia, y la importancia mide su peso económico, no su intensidad emocional. Cuando la importancia acumulada de las observaciones sin reflejar llega a 30, Reflexionar extrae conclusiones y las guarda como recuerdos nuevos. Olvidar, por su parte, borra cada día los recuerdos de importancia menor que 4 que tienen más de 15 días.
+
+La investigación ha propuesto otras formas de organizar la memoria de un agente, con un encaje muy desigual en este proyecto.
+
+| Técnica | Qué hace | Encaje en Human_proxy |
+| --- | --- | --- |
+| **Memoria jerárquica** (MemGPT) | Trata el contexto del modelo como memoria de trabajo y el almacenamiento como disco. El propio agente decide, con llamadas a funciones, qué sube al contexto y qué guarda. | Bajo. Recuperar ya decide qué entra en cada llamada, con una fórmula fija en código. Ceder esa decisión al modelo añadiría llamadas y quitaría control. |
+| **Olvido según el uso** (MemoryBank) | Aplica la curva de olvido de Ebbinghaus: un recuerdo se debilita con el tiempo y se refuerza cada vez que se recupera. | Alto. Olvidar usa una regla fija de importancia y antigüedad. Como cada recuerdo ya registra cuándo se usó por última vez, que es lo que mide la recencia, se podría olvidar lo que no se usa, en vez de lo que es antiguo. |
+| **Biblioteca de habilidades** (Voyager) | Guarda como programas reutilizables las soluciones que han funcionado. | Medio. Los planes de Actuar ya son JSON con criterio y acciones. Guardar los que Observar da por cumplidos permitiría reutilizarlos en encargos parecidos. Hoy el plan se borra con el compromiso. |
+| **Grafos de conocimiento** (Zep) | Guarda entidades y relaciones con su vigencia en el tiempo. | Medio. Encajaría con la cartera y los valores que sigue el usuario, que son datos relacionados que cambian. Supone otra base de datos y otro proceso de extracción. |
+
+### Planificación
+
+Borja planifica en dos niveles. Primero decide si se compromete, y unas reglas fijas, tomadas de Shoham (1993), establecen si acepta cada encargo y para cuándo. Después, cuando llega el momento de cumplirlo, Actuar escribe un plan antes de dar ningún paso, con un criterio de cumplimiento comprobable y hasta 5 acciones, cada una con su objetivo y su expectativa. Observar compara cada resultado con lo esperado y, si algo falla, Refinar puede sustituir las acciones pendientes, como mucho dos veces, aplazar el compromiso o darlo por fallido. Es una descomposición previa del problema con replanificación, en la línea de Plan-and-Solve (Wang *et al.*, 2023), y no una sucesión de pasos improvisados.
+
+Las técnicas que van más allá exploran varias soluciones a la vez o delegan el plan en un planificador formal. Ninguna de las dos encaja bien con encargos tan cortos como los de Borja.
+
+| Técnica | Qué hace | Encaje en Human_proxy |
+| --- | --- | --- |
+| **Árboles de pensamiento** (Tree of Thoughts) | Explora varias alternativas a la vez y retrocede si un camino no lleva a ninguna parte. | Bajo para los encargos actuales, que son cortos (cotizar y avisar, consultar y calcular). Multiplicaría las llamadas a Gemini, y con ellas los créditos, por el número de ramas. |
+| **Planificadores formales** (LLM+P) | Traduce el problema a PDDL y lo resuelve un planificador clásico, que garantiza que el plan es factible. | Muy bajo. Sirve para problemas con estados y acciones bien definidos, no para conversar sobre finanzas. |
+
+### Herramientas
+
+Borja tiene siete herramientas. Cuatro son escenarios de Make que Actuar invoca por webhook, con la autenticación por clave API de Make: cotizar (Cotizar), recordar (Recuperar), preguntar (Interpelar) y enviar. Las otras tres son módulos del propio Actuar: la búsqueda se hace con Gemini, el cálculo con un módulo de código y la consulta de la cartera, en el almacén. El cálculo ejecuta ya código escrito por el modelo, en el entorno aislado de Make, que es justo lo que la investigación propone generalizar.
+
+| Técnica | Qué hace | Encaje en Human_proxy |
+| --- | --- | --- |
+| **Código como acción** (CodeAct) | El agente actúa escribiendo código ejecutable en vez de llamadas JSON, y puede combinar varias herramientas en un solo paso. | Parcial. Borja ya lo hace para calcular. Extenderlo a todo exigiría un entorno de ejecución con acceso a las herramientas, que Make no da dentro de un módulo de código. |
+| **Model Context Protocol** (MCP) | Protocolo abierto para exponer herramientas y datos a cualquier cliente de IA. | Alto. Make tiene un servidor MCP que expone como herramientas los escenarios con programación bajo demanda y entradas y salidas definidas. Las habilidades de Borja se podrían usar desde otros clientes sin reescribirlas. Hoy se disparan por webhook y habría que adaptarlas. |
+
+### Orquestación
+
+Human_proxy está hecho con 20 escenarios de Make. Cada uno tiene una entrada y una salida definidas, y los demás lo invocan por webhook, como a una función. El diseño es modular, aunque no del todo independiente: Escribir y Reflexionar, por ejemplo, se invocan mutuamente. Un fallo a mitad de camino tampoco hace perder un compromiso, porque Cumplir lo vuelve a lanzar media hora después, y así hasta tres veces.
+
+La investigación reciente va en otra dirección. Marcos de trabajo como LangGraph sustituyen la orquestación visual por código y guardan el estado de cada ejecución, de modo que pueden reanudarla donde se cortó. Otros, como MetaGPT, reparten el trabajo entre varios agentes especializados que se comunican a través de un espacio de mensajes compartido.
+
+Pasar a un marco en código acabaría con el gasto en créditos de Make y con la fragilidad de encadenar escenarios por webhook. A cambio habría que pagar y mantener un alojamiento, y se perderían la cola de los webhooks, el historial de ejecuciones y el editor visual, que hoy son la principal herramienta para depurar el sistema. Repartir a Borja entre varios agentes, como un analista, un auditor de riesgos y un comunicador, tendría sentido con encargos largos y complejos. Con los actuales, que se resuelven en uno o en pocos pasos, solo añadiría coordinación.
+
+### Evaluación
+
+Hoy las pruebas son manuales. Se conversa con Borja por Telegram y se revisa en el historial de Make qué ha hecho cada escenario.
+
+En la investigación se usan baterías de pruebas automáticas. AgentBench mide cómo se desempeñan los modelos cuando actúan como agentes en varios entornos. PersonaMem mide otra cosa: si un modelo sigue la evolución del perfil y las preferencias de su usuario a lo largo del tiempo. No evalúa la personalidad del agente, pero sí lo que intenta capturar el apartado «interlocutor» del resumen de Borja.
+
+Para Human_proxy bastaría un conjunto fijo de conversaciones de prueba, cada una con lo que se espera que ocurra: si Borja acepta o no el compromiso, qué acciones ejecuta y qué recuerdos guarda. Lanzarlas después de cada cambio sustituiría las pruebas sueltas por una comprobación repetible.
