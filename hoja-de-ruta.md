@@ -1,8 +1,8 @@
-### Hoja de Ruta para el Aprendizaje y Aplicacion de Arquitecturas de Agentes de IA
+# Hoja de Ruta para el Aprendizaje y Aplicacion de Arquitecturas de Agentes de IA
 
 Esta hoja de ruta establece un plan estructurado para transformar un agente conversacional basado en automatizaciones y reglas lineales en una arquitectura de produccion de vanguardia (State-of-the-Art). El itinerario combina la fundamentacion teorica de la literatura cientifica con la implementacion practica mediante frameworks modernos de codigo abierto.
 
-#### **1\. Fase 1: Fundamentos Teoricos y Modelado del Agente (BDI y AOP)**
+## **1\. Fase 1: Fundamentos Teoricos y Modelado del Agente (BDI y AOP)**
 
 ##### 1.1 Fundamentos y Dominio Conceptual
 
@@ -14,7 +14,7 @@ Por otra parte, la teoria de Programacion Orientada a Agentes (Agent-Oriented Pr
 * Desacoplamiento Estricto de Compromisos: Separar formalmente el modulo de evaluacion de intenciones conversacionales del motor de ejecucion.  
 * Modelado de Estado Intencional: Reemplazar las descripciones narrativas simples por esquemas estructurados de estado, garantizando que el agente mantenga la coherencia de su personalidad sin incurrir en deriva conversacional.
 
-  #### **2\. Fase 2: Migracion del Scaffolding y Estandarizacion de Herramientas (DSPy, LangGraph y MCP)**
+  ## **2\. Fase 2: Migracion del Scaffolding y Estandarizacion de Herramientas (DSPy, LangGraph y MCP)**
 
 ##### 2.1 Fundamentos y Dominio Conceptual
 
@@ -32,7 +32,7 @@ Asimismo, el uso de herramientas ha evolucionado desde las llamadas a funciones 
 * Implementacion de Servidores MCP: Encapsular las herramientas de cotizacion de mercado, consulta de prensa economica y calculo de carteras en servidores MCP estandarizados.  
 * Adopcion de CodeAct: Permitir que el agente escriba scripts Python para operaciones complejas de filtrado de datos y analisis cuantitativo en lugar de encadenar llamadas a funciones JSON aisladas.
 
-  #### **3\. Fase 3: Rediseno Jerarquico de la Memoria Persistente (MemGPT, Skill Libraries y Grafos)**
+  ## **3\. Fase 3: Rediseno Jerarquico de la Memoria Persistente (MemGPT, Skill Libraries y Grafos)**
 
 ##### 3.1 Fundamentos y Dominio Conceptual
 
@@ -51,7 +51,7 @@ Mientras que arquitecturas como Generative Agents (Park et al.) utilizan un Memo
 * Skill Library Procedimental: Crear una biblioteca de rutinas financieras y plantillas de analisis aprobadas (skills.md o programas Python) para evitar que el agente tenga que planificar desde cero tareas recurrentes.  
 * Integracion de Grafos de Conocimiento: Utilizar motores como Zep para estructurar entidades financieras (empresas, tickers, regulaciones) y sus relaciones en grafos de conocimiento, eliminando alucinaciones en consultas multi-salto.
 
-  #### **4\. Fase 4: Planificacion Deliberativa y Razonamiento Avanzado (Sistema 2, ToT y Plan-and-Solve)**
+  ## **4\. Fase 4: Planificacion Deliberativa y Razonamiento Avanzado (Sistema 2, ToT y Plan-and-Solve)**
 
 ##### 4.1 Fundamentos y Dominio Conceptual
 
@@ -70,7 +70,7 @@ Asimismo, los modelos de razonamiento de cadena larga (Long Chain-of-Thought com
 * Descomposicion Previa (Plan-then-Execute): Adoptar patrones tipo ReWOO o LLM Compiler para generar grafos dirigidos aciclicos (DAG) de tareas en solicitudes complejas de inversion, reduciendo la latencia y el consumo de tokens frente al bucle ReAct tradicional.  
 * Exploracion Tree of Thoughts para Analisis Financiero: Para evaluaciones de riesgo o reestructuracion de carteras, implementar busqueda en arbol con funciones de evaluacion heuristica que exploren diferentes escenarios economicos antes de presentar una recomendacion.
 
-  #### **5\. Fase 5: Arquitectura Multi-Agente y Coordinacion Distribuida (Shared Message Pool)**
+  ## **5\. Fase 5: Arquitectura Multi-Agente y Coordinacion Distribuida (Shared Message Pool)**
 
 ##### 5.1 Fundamentos y Dominio Conceptual
 
@@ -91,7 +91,7 @@ Existen cuatro estructuras principales de comunicacion multi-agente:
 * Agente Interfaz / Comunicador: Responsable de mantener el tono y personaje en la interaccion con Telegram.  
 * Bus de Eventos (Shared Message Pool): Implementar un tablero de mensajes centralizado donde los agentes publiquen artefactos estructurados y suscriban tareas, evitando llamadas circulares y acoplamientos rigidos.
 
-  #### **6\. Fase 6: Evaluacion, Observabilidad y Optimizacion Continua (Evals, DSPy y Persona)**
+  ## **6\. Fase 6: Evaluacion, Observabilidad y Optimizacion Continua (Evals, DSPy y Persona)**
 
 ##### 6.1 Fundamentos y Dominio Conceptual
 
@@ -107,7 +107,7 @@ Para optimizar un agente sin recurrir a modificaciones manuales fragiles de prom
 * Pipeline de Optimizacion con DSPy: Ejecutar optimizadores de DSPy (como MIPROv2 o BootstrapFewShot) para sintonizar automaticamente los prompts de los modulos de clasificacion y extraccion de compromisos.  
 * Monitor de Alineacion y Persona: Configurar un agente evaluador que verifique periodicamente si las respuestas de Borja mantienen el tono deseado y no incurren en alucinaciones o infracciones de vetos.
 
-  #### **7\. Planificacion de Hitos de Ejecucion**
+  ## **7\. Planificacion de Hitos de Ejecucion**
 
 1. Hito 1: Migracion a Python y LangGraph  
 2. Hito 2: Estandarizacion de Herramientas MCP  
